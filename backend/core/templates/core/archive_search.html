@@ -1,0 +1,50 @@
+{% load static %}
+<div class="search-form" id="searchFormContainer">
+    <h4 class="mb-3">
+        <i class="bi bi-file-earmark-arrow-up me-2">
+            Поиск загруженных файлов
+        </i>
+    </h4>
+
+    <form id="archiveSearchForm" class="ajax-form" data-action="#">
+        {% csrf_token %}
+        <!--Поля поиска-->
+        <div class="mb-3">
+            <label class="form-select-label">Выберите пользователя:</label>
+            {% if users %}
+            <select name="user" class="form-select">
+                {% for user in users %}
+                <option value="{{ user.id }}">{{ user.first_name }} {{ user.last_name }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <p>Пользователей не найдено</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {% if doc_types %}
+            <label class="form-select-label">Выберите тип файла:</label>
+            <select name="file_type" class="form-select">
+                {% for file_type in doc_types %}
+                <option value="{{ file_type }}">{{ file_type }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <p>Типы файлов не найдены</p>
+            {% endif %}
+        </div>
+    </form>
+    <!-- Сообщения -->
+    <div class="alert d-none" id="uploadStatus"></div>
+
+    <!-- Кнопки -->
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn">
+            <i class="bi bi-upload me-2"></i>Найти
+        </button>
+
+    </div>
+</div>
+
+

@@ -1,0 +1,75 @@
+<div class="upload-form" id="uploadFormContainer">
+    <h4 class="mb-3">
+        <i class="bi bi-file-earmark-arrow-up me-2"></i>Сохранение одного файла
+    </h4>
+
+    <form id="singleUploadForm" class="ajax-form" data-action="{% url 'api_file_save' %}">
+        {% csrf_token %}
+        <!-- Поле для файла -->
+        <div class="mb-3">
+            <label class="form-label">Выберите файл:</label>
+            <input type="file"
+                   class="form-control"
+                   id="singleFileInput"
+                   name="file"
+                   accept=".xlsx,.xls,.csv"
+                   required>
+            <div class="form-text">
+                Поддерживаемые форматы: .xlsx, .xls, .csv (макс. 10 МБ)
+            </div>
+        </div>
+
+        <!-- Название файла -->
+        <div class="mb-3">
+            <label class="form-label">Название файла (необязательно):</label>
+            <input type="text"
+                   class="form-control"
+                   id="fileName"
+                   name="title"
+                   placeholder="Будет взято из имени файла">
+        </div>
+
+        <!-- Тип файла -->
+        <div class="mb-3">
+            <label class="form-label">Тип файла:</label>
+            <select class="form-select" name="doc_type">
+                {% for value, label in file_types %}
+                <option value="{{value}}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Описание -->
+        <div class="mb-3">
+            <label class="form-label">Описание (необязательно):</label>
+            <textarea class="form-control"
+                      id="fileDescription"
+                      name="description"
+                      rows="2"
+                      placeholder="Добавьте описание файла..."></textarea>
+        </div>
+
+        <!-- Сжатие -->
+        <div class="mb-3">
+            <input type="checkbox" id="fileCompression" name="should_compress" value="true" checked>
+            <label for="fileCompression" class="form-label">Сжимать файл?</label>
+        </div>
+
+        <!-- Прогресс бар -->
+        <div class="progress mb-3" id="progressBar" style="display: none; height: 10px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width: 0%"></div>
+        </div>
+
+        <!-- Сообщения -->
+        <div class="alert d-none" id="uploadStatus"></div>
+
+        <!-- Кнопки -->
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn">
+                <i class="bi bi-upload me-2"></i>Сохранить файл
+            </button>
+
+        </div>
+    </form>
+</div>

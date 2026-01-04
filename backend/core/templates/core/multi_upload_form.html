@@ -1,0 +1,59 @@
+<div class="upload-form" id="uploadFormContainer">
+    <h4 class="mb-3">
+        <i class="bi bi-files me-2"></i>Загрузка нескольких файлов
+    </h4>
+
+    <form id="multiUploadForm" class="ajax-form" data-action="{% url 'api_upload_multiple' %}">
+        {% csrf_token %}
+
+        <!-- Поле для нескольких файлов -->
+        <div class="mb-3">
+            <label class="form-label">Выберите файлы:</label>
+            <input type="file"
+                   class="form-control"
+                   id="multiFileInput"
+                   name="files"
+                   multiple
+                   accept=".xlsx,.xls,.csv"
+                   required>
+            <div class="form-text">
+                Поддерживаемые форматы: .xlsx, .xls, .csv (макс. 10 МБ каждый)
+            </div>
+        </div>
+
+        <!-- Список выбранных файлов -->
+        <div class="mb-3" id="selectedFilesList" style="display: none;">
+            <label class="form-label">Выбранные файлы:</label>
+            <div class="list-group" id="filesPreview"></div>
+        </div>
+
+        <!-- Описание (для всех файлов) -->
+        <div class="mb-3">
+            <label class="form-label">Описание для всех файлов (необязательно):</label>
+            <textarea class="form-control"
+                      id="multiDescription"
+                      name="description"
+                      rows="2"
+                      placeholder="Общее описание для всех файлов..."></textarea>
+        </div>
+
+        <!-- Прогресс бар -->
+        <div class="progress mb-3" id="progressBar" style="display: none; height: 10px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width: 0%"></div>
+        </div>
+
+        <!-- Сообщения -->
+        <div class="alert d-none" id="uploadStatus"></div>
+
+        <!-- Кнопки -->
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn">
+                <i class="bi bi-upload me-2"></i>Загрузить файлы
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="switchToSingleForm()">
+                <i class="bi bi-file-earmark me-2"></i>Один файл
+            </button>
+        </div>
+    </form>
+</div>

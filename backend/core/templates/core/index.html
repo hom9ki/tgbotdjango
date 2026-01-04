@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Главная - Загрузка файлов{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/index.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Основной заголовок -->
+    <div class="text-center mb-4">
+        <h1 class="display-5 fw-bold">
+            Добро пожаловать.
+        </h1>
+        <p class="lead text-muted">
+            Выберите нужную обработку и загрузите файл(ы).
+        </p>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Статистика</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <h3 class="text-primary" id="totalFiles">{{ count }}</h3>
+                            <small class="text-muted">Файлов</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-success" id="totalSize">{{ total_size }}</h3>
+                            <small class="text-muted">Всего</small>
+                        </div>
+                    </div>
+                    {% if is_authenticated %}
+                    <small class="text-muted d-block mt-2">Вы вошли как: {{ username }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель действий -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2 justify-content-center">
+                        <button class="btn btn-primary" id="loadSingleFormBtn">
+                            <i class="bi bi-file-earmark-plus me-2"></i>Определение кратности
+                        </button>
+                        <button class="btn btn-success" id="loadMultiFormBtn">
+                            <i class="bi bi-files me-2"></i>Работа с Прайс-листами
+                        </button>
+                        <button class="btn btn-outline-secondary" id="refreshFilesBtn">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Обновить список
+                        </button>
+                        <button class="btn btn-outline-danger" id="saveFileArchiveBtn">
+                            <i class="bi bi-trash me-2"></i>Сохранить файл в архиве
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Динамическая форма загрузки -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0" id="formTitle">Форма загрузки</h5>
+
+                </div>
+                <div class="card-body">
+                    <div id="formContainer">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-cloud-arrow-up" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Выберите тип загрузки файлов</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список загруженных файлов -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Загруженные файлы</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="refreshFilesBtn2">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-list" id="fileList">
+                    {% if files %}
+                    {% for file in files %}
+                    {% include 'core/file_card.html' %}
+                    {% endfor %}
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Шаблон для уведомлений -->
+<template id="successAlertTemplate">
+    <div class="alert alert-success alert-dismissible fade show position-fixed"
+         style="top: 20px; right: 20px; z-index: 1050; min-width: 300px;">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <span class="message"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+</template>
+
+<!-- Модальное окно для ошибок -->
+<div class="modal fade" id="errorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ошибка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="errorModalBody">
+                <!-- Текст ошибки будет здесь -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/index.js' %}"></script>
+{% endblock %}

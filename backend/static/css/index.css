@@ -1,0 +1,25 @@
+.upload-form {
+        animation: fadeIn 0.3s ease;
+    }
+
+@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+.file-item {
+        transition: background-color 0.2s;
+    }
+
+.file-item:hover {
+        background-color: #f8f9fa;
+    }
+
+.progress-bar-animated {
+        animation: progressBarAnimation 1s linear infinite;
+    }
+
+@keyframes progressBarAnimation {
+        0% { background-position: 0 0; }
+        100% { background-position: 40px 0; }
+    }
