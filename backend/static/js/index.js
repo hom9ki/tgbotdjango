@@ -266,6 +266,26 @@ async function handleFormSubmit(form, type) {
 
                 showSuccess('Файл обработан и загружен');
             }
+            if (data.processed_files){
+                console.log(data.processed_files);
+                const files = data.processed_files;
+                files.forEach(file => {
+                    const byteChars = atob(file.content);
+                    const byteNumbers = new Array(byteChars.length);
+                    for (let i = 0; i < byteChars.length; i++) {
+                    byteNumbers[i] = byteChars.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: file.content_type });
+
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = file.filename;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                });
+                showSuccess('Файлы обработаны и загружены');
+            }
             // Обновляем список файлов и статистику
             setTimeout(() => {
                 loadFilesList();

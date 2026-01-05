@@ -9,7 +9,9 @@ from rest_framework import status
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-
+from .excel.price_list_edit import read_excel
+from django.core.files.uploadedfile import InMemoryUploadedFile
+import io
 
 import base64
 
@@ -109,6 +111,7 @@ def api_upload_single_file(request):
     """Загрузка одного файла"""
 
     uploaded_file = request.FILES.get('file')
+    print(uploaded_file)
     title = request.POST.get('title', '')
     print(request.data)
     if not uploaded_file:
@@ -145,6 +148,8 @@ def api_upload_single_file(request):
             'error': serializer.errors,
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    response_serializer = UploadedFileSerializer(uploaded_file, context={'request': request})
+
     return Response({
         'success': True,
         'message': 'Файл успешно обработан',
@@ -153,7 +158,7 @@ def api_upload_single_file(request):
             'content': processed_file_base64,
             'content_type': content_type,
         },
-        'uploaded_file': UploadedFileSerializer(uploaded_file, context={'request': request}).data,
+        'uploaded_file': response_serializer.data,
     }, status=status.HTTP_200_OK)
 
 
@@ -161,11 +166,7 @@ def api_upload_single_file(request):
 @parser_classes([MultiPartParser, FormParser])
 def api_upload_multiple_files(request):
     """Загрузка нескольких файлов"""
-
-    files_list = []
-    for key in request.FILES:
-        files_list.append(request.FILES[key])
-
+    files_list = request.FILES.getlist('files')
     if not files_list:
         return Response({
             'success': False,
@@ -173,36 +174,99 @@ def api_upload_multiple_files(request):
             'action': 'multiple',
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = MultiFileUploadSerializer(
-        data=request.data,
-        context={'request': request}
-    )
+    processed_files = []
+    uploaded_files_data = []
 
-    if serializer.is_valid():
-        uploaded_files = serializer.save()
+    for up_file in files_list:
+        try:
+            up_file.seek(0)
+            file_bytes = up_file.read()
 
-        response_serializer = UploadedFileSerializer(
-            uploaded_files, many=True, context={'request': request}
-        )
-        return Response({
-            'success': True,
-            'message': f'Файлы успешно загружены: {len(uploaded_files)}',
-            'files': response_serializer.data,
-            'action': 'multiple',
-        }, status=status.HTTP_201_CREATED)
+            processed_file_bytes = read_excel(file_bytes, up_file.name)
+            processed_stream = io.BytesIO(processed_file_bytes)
+            up_file.seek(0)
+
+            processed_uploaded_file = InMemoryUploadedFile(
+                file=processed_stream,
+                field_name='file',
+                name=up_file.name,
+                content_type=up_file.content_type,
+                size=len(processed_file_bytes),
+                charset=None
+            )
+
+            data = {
+                'file': processed_uploaded_file,
+                'title': up_file.name.split('.')[0],
+                'description': request.data.get('description', ''),
+                'doc_type': request.data.get('doc_type', 'other'),
+                'should_compress': request.data.get('should_compress', False)
+            }
+
+            if 'title' not in data:
+                data['title'] = up_file.name.split('.')[0]
+
+            serializer = FileUploadSerializer(data=data, context={'request': request})
+
+            if serializer.is_valid():
+                uploaded_file = serializer.save()
+                uploaded_files_data.append(UploadedFileSerializer(uploaded_file, context={'request': request}).data)
+
+                processed_files.append({
+                    'filename': f"{up_file.name}",
+                    'content': base64.b64encode(processed_file_bytes).decode('utf-8'),
+                    'content_type': up_file.content_type,
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'error': serializer.errors,
+                    'action': 'multiple',
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': {'file': f'Ошибка обработки: {str(e)}'}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({
-        'success': False,
-        'error': serializer.errors,
-        'action': 'multiple',
-    }, status=status.HTTP_400_BAD_REQUEST)
+        'success': True,
+        'message': 'Файлы успешно обработаны',
+        'processed_files': processed_files,
+    }, status=status.HTTP_200_OK)
+
+    # process_price_list()
+    #
+    # serializer = MultiFileUploadSerializer(
+    #     data=request.data,
+    #     context={'request': request}
+    # )
+    #
+    # if serializer.is_valid():
+    #     uploaded_files = serializer.save()
+    #
+    #     response_serializer = UploadedFileSerializer(
+    #         uploaded_files, many=True, context={'request': request}
+    #     )
+    #     return Response({
+    #         'success': True,
+    #         'message': f'Файлы успешно загружены: {len(uploaded_files)}',
+    #         'files': response_serializer.data,
+    #         'action': 'multiple',
+    #     }, status=status.HTTP_201_CREATED)
+    #
+    # return Response({
+    #     'success': False,
+    #     'error': serializer.errors,
+    #     'action': 'multiple',
+    # }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
 def api_get_form(request, form_type='single'):
     """Получение формы для загрузки"""
     try:
-        print(form_type)
         file_types = UploadedFile.types
         if form_type == 'multiple':
             template = 'core/multi_upload_form.html'
@@ -216,7 +280,6 @@ def api_get_form(request, form_type='single'):
             'form_type': form_type,
             'file_types': file_types
         })
-        print(form_html)
 
         return Response({
             'success': True,
