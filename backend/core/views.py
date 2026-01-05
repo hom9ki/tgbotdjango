@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import openpyxl
 from django.shortcuts import render
 from .models import UploadedFile
@@ -113,7 +115,10 @@ def api_upload_single_file(request):
     uploaded_file = request.FILES.get('file')
     print(uploaded_file)
     title = request.POST.get('title', '')
-    print(request.data)
+    original_date = title.split(' ')[2]
+    original_extension = Path(uploaded_file.name).suffix
+    final_name = f'Кратность {original_date}{original_extension}'
+    print(f'{original_date}-{original_extension}: {final_name}')
     if not uploaded_file:
         return Response({
             'success': False,
@@ -126,6 +131,7 @@ def api_upload_single_file(request):
 
     try:
         processed_file_bytes = miltiplicity_processing_excel(file_bytes)
+        processed_stream = io.BytesIO(processed_file_bytes)
         uploaded_file.seek(0)
     except Exception as e:
         return Response({
@@ -133,16 +139,35 @@ def api_upload_single_file(request):
             'error': {'file': f'Ошибка обработки: {str(e)}'}
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    processed_uploaded_file = InMemoryUploadedFile(
+        file=processed_stream,
+        field_name='file',
+        name=final_name,
+        content_type=uploaded_file.content_type,
+        size=len(processed_file_bytes),
+        charset=None
+    )
     processed_file_base64 = base64.b64encode(processed_file_bytes).decode('utf-8')
 
+    print(request.data)
+
+    data = {
+        'file': processed_uploaded_file,
+        'title': request.data.get('title', ''),
+        'description': request.data.get('description', ''),
+        'doc_type': request.data.get('doc_type', 'other'),
+        'should_compress': request.data.get('should_compress', False)
+    }
+
     serializer = FileUploadSerializer(
-        data=request.data,
+        data=data,
         context={'request': request}
     )
 
     if serializer.is_valid():
         uploaded_file = serializer.save()
     else:
+        print(serializer.errors)
         return Response({
             'success': False,
             'error': serializer.errors,
@@ -154,7 +179,7 @@ def api_upload_single_file(request):
         'success': True,
         'message': 'Файл успешно обработан',
         'processed_file': {
-            'filename': f"Обработанный_{title.lower()}",
+            'filename': f"{final_name}",
             'content': processed_file_base64,
             'content_type': content_type,
         },
@@ -168,6 +193,7 @@ def api_upload_multiple_files(request):
     """Загрузка нескольких файлов"""
     files_list = request.FILES.getlist('files')
     if not files_list:
+        print('Файлы не выбраны')
         return Response({
             'success': False,
             'error': {'files': ['Файлы не выбраны']},
@@ -178,6 +204,7 @@ def api_upload_multiple_files(request):
     uploaded_files_data = []
 
     for up_file in files_list:
+        print(f'Обработка файла: {up_file.name}')
         try:
             up_file.seek(0)
             file_bytes = up_file.read()
@@ -235,32 +262,6 @@ def api_upload_multiple_files(request):
         'message': 'Файлы успешно обработаны',
         'processed_files': processed_files,
     }, status=status.HTTP_200_OK)
-
-    # process_price_list()
-    #
-    # serializer = MultiFileUploadSerializer(
-    #     data=request.data,
-    #     context={'request': request}
-    # )
-    #
-    # if serializer.is_valid():
-    #     uploaded_files = serializer.save()
-    #
-    #     response_serializer = UploadedFileSerializer(
-    #         uploaded_files, many=True, context={'request': request}
-    #     )
-    #     return Response({
-    #         'success': True,
-    #         'message': f'Файлы успешно загружены: {len(uploaded_files)}',
-    #         'files': response_serializer.data,
-    #         'action': 'multiple',
-    #     }, status=status.HTTP_201_CREATED)
-    #
-    # return Response({
-    #     'success': False,
-    #     'error': serializer.errors,
-    #     'action': 'multiple',
-    # }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
