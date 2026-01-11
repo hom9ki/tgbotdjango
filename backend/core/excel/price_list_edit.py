@@ -2,7 +2,14 @@ import io
 
 import pandas
 from pathlib import Path
-from settings import PRICE_SETTINGS
+from .settings import PRICE_SETTINGS,PRICE_NAMES
+
+
+def edit_file_name(file_name):
+    if file_name in PRICE_NAMES.keys():
+        file_name = PRICE_NAMES[file_name]
+    return file_name
+
 
 
 def read_xlsx(file_bytes, file_name, extension):

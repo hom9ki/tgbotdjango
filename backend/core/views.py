@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import openpyxl
 from django.shortcuts import render
 from .models import UploadedFile
 from .serializers import UploadedFileSerializer, FileUploadSerializer, MultiFileUploadSerializer
@@ -115,10 +114,8 @@ def api_upload_single_file(request):
     uploaded_file = request.FILES.get('file')
     print(uploaded_file)
     title = request.POST.get('title', '')
-    original_date = title.split(' ')[2]
     original_extension = Path(uploaded_file.name).suffix
-    final_name = f'Кратность {original_date}{original_extension}'
-    print(f'{original_date}-{original_extension}: {final_name}')
+    final_name = f'Кратность {original_extension}'
     if not uploaded_file:
         return Response({
             'success': False,
