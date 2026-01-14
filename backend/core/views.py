@@ -10,7 +10,7 @@ from rest_framework import status
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-from .excel.price_list_edit import read_excel
+from .excel.price_list_edit import read_excel, PriceListEdit
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import io
 
@@ -206,8 +206,10 @@ def api_upload_multiple_files(request):
             up_file.seek(0)
             file_bytes = up_file.read()
 
-            processed_file_bytes = read_excel(file_bytes, up_file.name)
-            processed_stream = io.BytesIO(processed_file_bytes)
+            processor = PriceListEdit(file_bytes, up_file.name)
+            stream = processor.get_stream
+
+            processed_stream = io.BytesIO(stream)
             up_file.seek(0)
 
             processed_uploaded_file = InMemoryUploadedFile(
@@ -215,7 +217,7 @@ def api_upload_multiple_files(request):
                 field_name='file',
                 name=up_file.name,
                 content_type=up_file.content_type,
-                size=len(processed_file_bytes),
+                size=len(stream),
                 charset=None
             )
 
@@ -238,7 +240,7 @@ def api_upload_multiple_files(request):
 
                 processed_files.append({
                     'filename': f"{up_file.name}",
-                    'content': base64.b64encode(processed_file_bytes).decode('utf-8'),
+                    'content': base64.b64encode(stream).decode('utf-8'),
                     'content_type': up_file.content_type,
                 })
             else:
@@ -249,6 +251,7 @@ def api_upload_multiple_files(request):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            print(f'Ошибка обработки файла {up_file.name}: {str(e)}')
             return Response({
                 'success': False,
                 'error': {'file': f'Ошибка обработки: {str(e)}'}

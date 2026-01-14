@@ -1,94 +1,100 @@
 import io
 
-import pandas
+import pandas as pd
 from pathlib import Path
-from .settings import PRICE_SETTINGS,PRICE_NAMES
+from .settings import PRICE_SETTINGS, PRICE_NAMES
 
 
-def edit_file_name(file_name):
-    if file_name in PRICE_NAMES.keys():
-        file_name = PRICE_NAMES[file_name]
-    return file_name
+class PriceListEdit:
+    __PRICE_SETTINGS = PRICE_SETTINGS
+    __PRICE_NAMES = PRICE_NAMES
+    __ENCODINGS = ['utf-8', 'cp1251', 'windows-1251', 'iso-8859-1', 'latin1']
 
+    def __init__(self, file_bytes, file_name):
+        self.__file_bytes = file_bytes
+        self.__file_name = file_name
+        self.__extension = Path(file_name).suffix
+        self.__base_name = Path(file_name).stem
+        self.__columns = self.__PRICE_SETTINGS.get(self.__base_name, [])
+        self.__required_columns = [col for col in self.__columns.keys()]
+        self.__max_count_col = max(self.__columns.values())
+        self.__data = {}
+        self.__stream = None
 
+    @property
+    def get_stream(self):
+        if self.__stream is None:
+            self.__read_file()
+        return self.__stream
 
-def read_xlsx(file_bytes, file_name, extension):
-    try:
-        engine = 'openpyxl' if extension == '.xlsx' else 'xlrd'
-        df = pandas.read_excel(io.BytesIO(file_bytes), engine=engine)
-        return df
-    except Exception as e:
-        print(f"Ошибка при чтении файла {file_name}: {e}")
-        raise
+    def edit_name(self):
+        if self.__base_name in self.__PRICE_NAMES:
+            self.__file_name = f'{self.__PRICE_NAMES[self.__base_name]}{self.__extension}'
 
-
-def read_csv(file_bytes, file_name, encodings):
-    for encoding in encodings:
+    def __read_xlsx_xls(self):
         try:
-            df = pandas.read_csv(io.BytesIO(file_bytes), encoding=encoding, delimiter=';', low_memory=False)
+            engine = 'openpyxl' if self.__extension == '.xlsx' else 'xlrd'
+            df = pd.read_excel(io.BytesIO(self.__file_bytes), engine=engine)
             return df
-        except UnicodeDecodeError:
-            continue
         except Exception as e:
-            print(f"Ошибка при чтении файла {file_name} с кодировкой {encoding}: {e}")
-            continue
-    raise ValueError(f'Не удалось прочитать файл {file_name}')
+            print(f'Ошибка при чтении файла {self.__file_name}: {e}')
+            raise
 
+    def __read_csv(self):
+        for encoding in self.__ENCODINGS:
+            try:
+                df = pd.read_csv(io.BytesIO(self.__file_bytes), encoding=encoding, delimiter=';', low_memory=False)
+                return df
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                continue
+        raise ValueError(f'Не удалось прочитать файл {self.__file_name}')
 
-def read_file_data(file_bytes, file_name):
-    print(f'Чтение файла: {file_name}')
-    extension = Path(file_name).suffix
-    encodings = ['utf-8', 'cp1251', 'windows-1251', 'iso-8859-1', 'latin1']
+    def __read_file_data(self):
+        if self.__extension in ['.xls', '.xlsx']:
+            return self.__read_xlsx_xls()
+        elif self.__extension == '.csv':
+            return self.__read_csv()
+        else:
+            raise ValueError(f'Неизвестный формат файла {self.__file_name}')
 
-    if extension in ['.xls', '.xlsx']:
-        return read_xlsx(file_bytes, file_name, extension)
+    def __get_header_names(self):
+        headrs_names = {}
+        for col_name, col_index in self.__columns.items():
+            headrs_names[f'Column_{col_index - 1}'] = col_name
 
-    elif extension == '.csv':
-        return read_csv(file_bytes, file_name, encodings)
+        return headrs_names
 
-    else:
-        raise ValueError(f'Неизвестный формат файла {file_name}')
+    def __create_data(self, df):
+        for col_name, col_index in self.__columns.items():
+            self.__data[f'Column_{col_index - 1}'] = df[col_name].tolist()
 
+    def __read_file(self):
+        if self.__base_name not in self.__PRICE_SETTINGS:
+            print(f'Неизвестный файл {self.__file_name}')
+            self.__stream = None
+        df = self.__read_file_data()
+        missing_columns = [col for col in self.__required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
 
-def read_excel(file_bytes, file_name):
-    print(f'Чтение файла: {file_name}')
-    base_name = Path(file_name).stem
-    if base_name not in PRICE_SETTINGS:
-        print(f'Неизвестный файл {file_name}')
-        return None
+        for i in range(self.__max_count_col):
+            self.__data[f'Column_{i}'] = [None] * len(df)
 
-    columns = PRICE_SETTINGS[base_name]
-    required_columns = list(columns.keys())
-    print(f'Чтение файла {file_name} завершено')
+        self.__create_data(df)
 
-    df = read_file_data(file_bytes, file_name)
+        new_df = pd.DataFrame(self.__data)
 
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise ValueError(f"Отсутствуют необходимые столбцы: {missing_columns}")
+        column_names = self.__get_header_names()
 
-    max_col = max(columns.values())
-    data = {}
-    for i in range(max_col):
-        data[f'Column_{i}'] = [None] * len(df)
+        new_df = new_df.rename(columns=column_names)
 
-    for col_name, col_index in columns.items():
-        data[f'Column_{col_index - 1}'] = df[col_name].tolist()
-
-    new_df = pandas.DataFrame(data)
-
-    column_names = {}
-    for col_name, col_index in columns.items():
-        column_names[f'Column_{col_index - 1}'] = col_name
-
-    new_df = new_df.rename(columns=column_names)
-
-    output_stream = io.BytesIO()
-    with pandas.ExcelWriter(output_stream, engine='openpyxl') as writer:
-        new_df.to_excel(writer, index=False, sheet_name='Лист1')
-    output_stream.seek(0)
-    print(f'Обработка файла {file_name} завершена')
-    return output_stream.read()
+        output_stream = io.BytesIO()
+        with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
+            new_df.to_excel(writer, index=False, sheet_name='Лист1')
+        output_stream.seek(0)
+        self.__stream = output_stream.read()
 
 
 def file_path():
