@@ -10,7 +10,7 @@ from rest_framework import status
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-from .excel.price_list_edit import read_excel, PriceListEdit
+from .excel.price_list_edit import PriceListEdit
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import io
 
@@ -208,14 +208,14 @@ def api_upload_multiple_files(request):
 
             processor = PriceListEdit(file_bytes, up_file.name)
             stream = processor.get_stream
-
+            file_name = processor.get_file_name
             processed_stream = io.BytesIO(stream)
             up_file.seek(0)
 
             processed_uploaded_file = InMemoryUploadedFile(
                 file=processed_stream,
                 field_name='file',
-                name=up_file.name,
+                name=file_name,
                 content_type=up_file.content_type,
                 size=len(stream),
                 charset=None
@@ -223,7 +223,7 @@ def api_upload_multiple_files(request):
 
             data = {
                 'file': processed_uploaded_file,
-                'title': up_file.name.split('.')[0],
+                'title': file_name.split('.')[0],
                 'description': request.data.get('description', ''),
                 'doc_type': request.data.get('doc_type', 'other'),
                 'should_compress': request.data.get('should_compress', False)
@@ -239,7 +239,7 @@ def api_upload_multiple_files(request):
                 uploaded_files_data.append(UploadedFileSerializer(uploaded_file, context={'request': request}).data)
 
                 processed_files.append({
-                    'filename': f"{up_file.name}",
+                    'filename': f"{file_name}",
                     'content': base64.b64encode(stream).decode('utf-8'),
                     'content_type': up_file.content_type,
                 })

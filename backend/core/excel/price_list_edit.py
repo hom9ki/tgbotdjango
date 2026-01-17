@@ -10,7 +10,7 @@ class PriceListEdit:
     __PRICE_NAMES = PRICE_NAMES
     __ENCODINGS = ['utf-8', 'cp1251', 'windows-1251', 'iso-8859-1', 'latin1']
 
-    def __init__(self, file_bytes, file_name):
+    def __init__(self, file_bytes: bytes, file_name: str):
         self.__file_bytes = file_bytes
         self.__file_name = file_name
         self.__extension = Path(file_name).suffix
@@ -27,7 +27,12 @@ class PriceListEdit:
             self.__read_file()
         return self.__stream
 
-    def edit_name(self):
+    @property
+    def get_file_name(self):
+        self.__edit_name()
+        return self.__file_name
+
+    def __edit_name(self):
         if self.__base_name in self.__PRICE_NAMES:
             self.__file_name = f'{self.__PRICE_NAMES[self.__base_name]}{self.__extension}'
 
@@ -76,19 +81,23 @@ class PriceListEdit:
             self.__stream = None
         df = self.__read_file_data()
         missing_columns = [col for col in self.__required_columns if col not in df.columns]
-        if missing_columns:
+        new_df = None
+        if len(missing_columns) == len(self.__required_columns):
+            raise ValueError(f'Отсутствуют все заголовки {missing_columns}')
+        elif missing_columns:
             raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
+        elif not missing_columns:
+            for i in range(self.__max_count_col):
+                self.__data[f'Column_{i}'] = [None] * len(df)
 
-        for i in range(self.__max_count_col):
-            self.__data[f'Column_{i}'] = [None] * len(df)
+            self.__create_data(df)
 
-        self.__create_data(df)
+            new_df = pd.DataFrame(self.__data)
 
-        new_df = pd.DataFrame(self.__data)
+            column_names = self.__get_header_names()
 
-        column_names = self.__get_header_names()
+            new_df = new_df.rename(columns=column_names)
 
-        new_df = new_df.rename(columns=column_names)
 
         output_stream = io.BytesIO()
         with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
