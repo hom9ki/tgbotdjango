@@ -29,6 +29,7 @@ class ColumnInfo:
     index: int
     data_type: ColumnType
     confidence: float
+    data: List[Any] = None
 
     @classmethod
     def empty(cls):
@@ -37,6 +38,10 @@ class ColumnInfo:
 
 class SmartColumnDetector:
     PATTERNS = {
+        ColumnType.BRAND:
+            [
+                r'^[A-Z0-9\s&.-]+$'
+            ],
         ColumnType.ARTICLE:
             [
                 r'^[A-Z0-9\-_\/\.]{3,20}$',  # ABC-123, 123/456
@@ -57,21 +62,8 @@ class SmartColumnDetector:
                 r'^[<>≥≤]\d+$',
                 r'^[<>≥≤]\s*\d+[\.,]\d+$'
             ],
-        ColumnType.BRAND:
-            [
-                r'^[A-Z0-9\s&.-]+$'
-            ]
-    }
 
-    KEYWORDS = {
-        ColumnType.BRAND:
-            [
 
-            ],
-        ColumnType.NAME:
-            [
-
-            ],
     }
 
     def __init__(self):
@@ -84,24 +76,28 @@ class SmartColumnDetector:
             print('df is empty')
             return None
         stat = {}
+        print(df.head())
         for i, column in enumerate(df.columns):
             column_data = df.iloc[:, i]
             stat[i] = self.analyze_column(column_data, i, column, stat)
-        print(f'col_info: {stat}')
+
+        columns_name = {col.index: col.data_type.value for col in self.detect_title(stat)}
+        print(f'col_info: {columns_name}')
 
         return None
 
     def analyze_column(self, column_data: pd.Series, index: int, name: str, stat: dict):
 
         series = self.get_simple_series(column_data)
-        res = self.simple_detect_column_type(series, index)
-        if res['contain_str']:
+        type_res = self.simple_detect_column_type(series, index)
+        if type_res['contain_str']:
             stat = self.detect_column_str_brand(series, index)
-        elif res['contain_int']:
+        elif type_res['contain_int']:
             stat = self.detect_column_int_brand(series, index)
-        elif res['contain_float']:
+        elif type_res['contain_float']:
             stat = self.detect_column_float_brand(series, index)
         else:
+            print(type_res)
             raise ValueError('column type not found')
         data = self.select_title(stat)
         return data
@@ -111,7 +107,7 @@ class SmartColumnDetector:
         no_nan_series = series.dropna()
         if len(no_nan_series) == 0:
             return []
-        simple_series = no_nan_series.sample(300, random_state=42).tolist()
+        simple_series = no_nan_series.sample(50, random_state=42).tolist()
 
         return simple_series
 
@@ -140,14 +136,16 @@ class SmartColumnDetector:
                 if value.isdigit():
                     stat_values['int_count'] += 1
                 else:
-                    stat_values['str_count'] += 1
+                    try:
+                        value = float(value.strip())
+                        stat_values['float_count'] += 1
+                    except ValueError:
+                        stat_values['str_count'] += 1
 
         stat_series['contain_int'] = stat_values['int_count'] / stat_series['series_len'] > 0.5
         stat_series['contain_float'] = stat_values['float_count'] / stat_series['series_len'] > 0.5
         stat_series['contain_str'] = stat_values['str_count'] / stat_series['series_len'] > 0.7
-        stat_series['percent_int'] = stat_values['int_count'] / stat_series['series_len']
-        stat_series['percent_float'] = stat_values['float_count'] / stat_series['series_len']
-        stat_series['percent_str'] = stat_values['str_count'] / stat_series['series_len']
+
         return stat_series
 
     def detect_column_str_brand(self, series: List[Any], index: int):
@@ -165,7 +163,7 @@ class SmartColumnDetector:
                 if re.match(pattern, str(value)):
                     confidence += 1
                     break
-        return ColumnInfo(index=index, data_type=ColumnType.ARTICLE, confidence=confidence / len(series))
+        return ColumnInfo(index=index, data_type=ColumnType.ARTICLE, confidence=confidence / len(series), data=series)
 
     def is_brand(self, series: List[Any], index: int) -> ColumnInfo:
         confidence = 0
@@ -174,7 +172,7 @@ class SmartColumnDetector:
                 if re.match(pattern, str(value)):
                     confidence += 1
                     break
-        return ColumnInfo(index=index, data_type=ColumnType.BRAND, confidence=confidence / len(series))
+        return ColumnInfo(index=index, data_type=ColumnType.BRAND, confidence=confidence / len(series), data=series)
 
     def detect_column_int_brand(self, series: List[Any], index: int) -> List[ColumnInfo]:
         result = []
@@ -189,7 +187,8 @@ class SmartColumnDetector:
                 if re.match(pattern, str(value)):
                     confidence += 1
                     break
-        return ColumnInfo(index=index, data_type=ColumnType.QUANTITY, confidence=confidence / len(series))
+        return ColumnInfo(index=index, data_type=ColumnType.QUANTITY, confidence=confidence / len(series),
+                          data=series)
 
     def detect_column_float_brand(self, series: List[Any], index: int):
         result = []
@@ -204,7 +203,7 @@ class SmartColumnDetector:
                 if re.match(pattern, str(value)):
                     confidence += 1
                     break
-        return ColumnInfo(index=index, data_type=ColumnType.PRICE, confidence=confidence / len(series))
+        return ColumnInfo(index=index, data_type=ColumnType.PRICE, confidence=confidence / len(series), data=series)
 
     def select_title(self, stat: List[ColumnInfo]) -> ColumnInfo:
         if len(stat) <= 0:
@@ -219,3 +218,83 @@ class SmartColumnDetector:
             if confidence == 0:
                 return ColumnInfo.empty()
             return stat[index]
+
+    def detect_title(self, stat: dict):
+        result = []
+
+        if len(stat) <= 0:
+            return None
+
+        for key in self.PATTERNS.keys():
+            lines = []
+            for i in stat:
+                if stat[i].data_type == key:
+                    lines.append(stat[i])
+
+            if len(lines) == 1:
+                result.append(lines[0])
+            if len(lines) > 1:
+                if key == ColumnType.BRAND or key == ColumnType.ARTICLE:
+                    result.extend(self.find_brand_and_article(lines))
+                if key == ColumnType.PRICE:
+                    result.extend(lines)
+                    self.find_price(lines)
+                if key == ColumnType.QUANTITY:
+                    result.extend(self.find_quantity(lines))
+                if key == ColumnType.UNDEFINED:
+                    result.extend(lines)
+
+        return result
+
+    def find_brand_and_article(self, lines: List[ColumnInfo]):
+        avg_len = {
+            'line': None,
+            'length': 0
+        }
+        for i, line in enumerate(lines):
+            len_data = 0
+            for value in line.data:
+                len_data += len(str(value))
+            if avg_len['line'] is None:
+                avg_len['line'] = i
+                avg_len['length'] = len_data / len(line.data)
+            elif avg_len['length'] > len_data / len(line.data):
+                avg_len['line'] = i
+                avg_len['length'] = len_data / len(line.data)
+            else:
+                line.data_type = ColumnType.UNDEFINED
+
+        for i, line in enumerate(lines):
+            if i != avg_len['line']:
+                line.data_type = ColumnType.UNDEFINED
+
+        return lines
+
+    def find_price(self, lines: List[ColumnInfo]):
+        pass
+
+    def find_quantity(self, lines: List[ColumnInfo]):
+        avg_summ_data = {
+            'line': None,
+            'avg_summ': 0
+        }
+
+        for i, line in enumerate(lines):
+            avg_data = sum([int(value.replace('>', '')) if type(value) == str else value for value in line.data]) / len(
+                line.data)
+
+            num_list = [int(value.replace('>', '')) if type(value) == str else value for value in line.data]
+
+            if avg_summ_data['line'] is None and 1 in num_list:
+                avg_summ_data['line'] = i
+                avg_summ_data['avg_summ'] = avg_data
+            elif avg_summ_data['avg_summ'] < avg_data and 1 in num_list:
+                avg_summ_data['line'] = i
+                avg_summ_data['avg_summ'] = avg_data
+            else:
+                line.data_type = ColumnType.UNDEFINED
+        print(avg_summ_data)
+        for i, line in enumerate(lines):
+            if i != avg_summ_data['line']:
+                line.data_type = ColumnType.UNDEFINED
+        return lines
