@@ -3,6 +3,7 @@ import io
 import pandas as pd
 from pathlib import Path
 from .settings import PRICE_SETTINGS, PRICE_NAMES
+from .ple_v2 import SmartColumnDetector
 
 
 class PriceListEdit:
@@ -20,6 +21,7 @@ class PriceListEdit:
         self.__max_count_col = max(self.__columns.values())
         self.__data = {}
         self.__stream = None
+        self.processor_header = SmartColumnDetector()
 
     @property
     def get_stream(self):
@@ -72,8 +74,13 @@ class PriceListEdit:
         return headrs_names
 
     def __create_data(self, df):
-        for col_name, col_index in self.__columns.items():
-            self.__data[f'Column_{col_index - 1}'] = df[col_name].tolist()
+        print(f'Columns: {df.columns}')
+        # for col_name, col_index in self.__columns.items():
+        #     self.__data[f'Column_{col_index - 1}'] = df[col_name].tolist()
+
+        for index, col_name in enumerate(df.columns):
+            print(f'Column_{index}: {col_name}')
+            self.__data[f'Column_{index}'] = df[col_name].tolist()
 
     def __read_file(self):
         if self.__base_name not in self.__PRICE_SETTINGS:
@@ -81,9 +88,10 @@ class PriceListEdit:
             self.__stream = None
         df = self.__read_file_data()
         missing_columns = [col for col in self.__required_columns if col not in df.columns]
-        new_df = None
+
         if len(missing_columns) == len(self.__required_columns):
-            raise ValueError(f'Отсутствуют все заголовки {missing_columns}')
+            df = self.processor_header.analyze_df(df)
+            self.__create_data(df)
         elif missing_columns:
             raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
         elif not missing_columns:
@@ -91,14 +99,13 @@ class PriceListEdit:
                 self.__data[f'Column_{i}'] = [None] * len(df)
 
             self.__create_data(df)
+        print([i[:10] for i in self.__data.values()])
+        new_df = pd.DataFrame(self.__data)
+        column_names = self.__get_header_names()
+        # name_cols = [column_names.get(f'Column_{i}', f'Column_{i}') for i in range(len(df.columns))]
 
-            new_df = pd.DataFrame(self.__data)
-
-            column_names = self.__get_header_names()
-
-            new_df = new_df.rename(columns=column_names)
-
-
+        new_df = new_df.rename(columns=column_names)
+        # new_df.columns = name_cols
         output_stream = io.BytesIO()
         with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
             new_df.to_excel(writer, index=False, sheet_name='Лист1')

@@ -33,7 +33,7 @@ class ColumnInfo:
 
     @classmethod
     def empty(cls):
-        return cls(index=0, confidence=0.0, data_type=ColumnType.UNDEFINED)
+        return cls(index=10, confidence=0.0, data_type=ColumnType.UNDEFINED)
 
 
 class SmartColumnDetector:
@@ -62,7 +62,7 @@ class SmartColumnDetector:
                 r'^[<>≥≤]\d+$',
                 r'^[<>≥≤]\s*\d+[\.,]\d+$'
             ],
-
+        ColumnType.UNDEFINED: []
 
     }
 
@@ -76,15 +76,17 @@ class SmartColumnDetector:
             print('df is empty')
             return None
         stat = {}
-        print(df.head())
+        # print(df.head())
         for i, column in enumerate(df.columns):
             column_data = df.iloc[:, i]
             stat[i] = self.analyze_column(column_data, i, column, stat)
 
         columns_name = {col.index: col.data_type.value for col in self.detect_title(stat)}
-        print(f'col_info: {columns_name}')
+        # print(f'col_info: {dict(sorted(columns_name.items()))}')
+        new_column = [columns_name.get(i) for i in range(len(df.columns))]
+        df.columns = new_column
 
-        return None
+        return df
 
     def analyze_column(self, column_data: pd.Series, index: int, name: str, stat: dict):
 
@@ -107,7 +109,7 @@ class SmartColumnDetector:
         no_nan_series = series.dropna()
         if len(no_nan_series) == 0:
             return []
-        simple_series = no_nan_series.sample(50, random_state=42).tolist()
+        simple_series = no_nan_series.sample(500, random_state=42).tolist()
 
         return simple_series
 
@@ -215,8 +217,10 @@ class SmartColumnDetector:
                 if item.confidence > confidence:
                     confidence = item.confidence
                     index = i
-            if confidence == 0:
-                return ColumnInfo.empty()
+                elif item.confidence == 0 or item.confidence < confidence:
+                    stat[i].data_type = ColumnType.UNDEFINED
+            # if confidence == 0:
+            #     return ColumnInfo.empty()
             return stat[index]
 
     def detect_title(self, stat: dict):
