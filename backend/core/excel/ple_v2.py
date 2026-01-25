@@ -83,7 +83,7 @@ class SmartColumnDetector:
 
         columns_name = {col.index: col.data_type.value for col in self.detect_title(stat)}
         # print(f'col_info: {dict(sorted(columns_name.items()))}')
-        new_column = [columns_name.get(i) for i in range(len(df.columns))]
+        new_column = [columns_name.get(i) if columns_name.get(i) != 'undefined' else f'Column {i}'  for i in range(len(df.columns))]
         df.columns = new_column
 
         return df

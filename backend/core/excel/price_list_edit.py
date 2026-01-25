@@ -19,7 +19,7 @@ class PriceListEdit:
         self.__columns = self.__PRICE_SETTINGS.get(self.__base_name, [])
         self.__required_columns = [col for col in self.__columns.keys()]
         self.__max_count_col = max(self.__columns.values())
-        self.__data = {}
+        self.__data = []
         self.__stream = None
         self.processor_header = SmartColumnDetector()
 
@@ -74,13 +74,32 @@ class PriceListEdit:
         return headrs_names
 
     def __create_data(self, df):
-        print(f'Columns: {df.columns}')
-        # for col_name, col_index in self.__columns.items():
-        #     self.__data[f'Column_{col_index - 1}'] = df[col_name].tolist()
+        print(df.head())
+        print(df.columns.tolist())
+        columns = df.columns.tolist()
+        new_columns = [''] * len(columns)
+        rows = []
+        # for index, col_name in enumerate(df.columns):
+        #     if col_name in self.__required_columns:
+        #         self.__data[f'Column_{self.__columns[col_name] - 1}'] = df.iloc[:, index]
+        #     else:
+        #         if index not in self.__columns.values():
+        #             self.__data[f'Column_{index}'] = df.iloc[:, index]
 
-        for index, col_name in enumerate(df.columns):
-            print(f'Column_{index}: {col_name}')
-            self.__data[f'Column_{index}'] = df[col_name].tolist()
+        for i, col_name in enumerate(columns):
+            if col_name in self.__required_columns:
+                target_index = self.__columns[col_name] - 1
+                new_columns[target_index] = col_name
+                new_columns[i] = columns[target_index]
+            else:
+                if new_columns[i] == '':
+                    new_columns[i] = col_name
+
+        for _, row in df.iterrows():
+            rows.append({col: row.get(col) for col in new_columns})
+
+        print(f'DF: {df.columns.tolist()}:\nnew_columns: {new_columns}')
+        self.__data = rows
 
     def __read_file(self):
         if self.__base_name not in self.__PRICE_SETTINGS:
@@ -95,11 +114,9 @@ class PriceListEdit:
         elif missing_columns:
             raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
         elif not missing_columns:
-            for i in range(self.__max_count_col):
-                self.__data[f'Column_{i}'] = [None] * len(df)
-
+            # for i in range(self.__max_count_col):
+            #     self.__data[f'Column_{i}'] = [None] * len(df)
             self.__create_data(df)
-        print([i[:10] for i in self.__data.values()])
         new_df = pd.DataFrame(self.__data)
         column_names = self.__get_header_names()
         # name_cols = [column_names.get(f'Column_{i}', f'Column_{i}') for i in range(len(df.columns))]
