@@ -75,22 +75,20 @@ class PriceListEdit:
 
     def __create_data(self, df):
         print(df.head())
-        print(df.columns.tolist())
         columns = df.columns.tolist()
         new_columns = [''] * len(columns)
         rows = []
-        # for index, col_name in enumerate(df.columns):
-        #     if col_name in self.__required_columns:
-        #         self.__data[f'Column_{self.__columns[col_name] - 1}'] = df.iloc[:, index]
-        #     else:
-        #         if index not in self.__columns.values():
-        #             self.__data[f'Column_{index}'] = df.iloc[:, index]
+
+        first_column = set(df.iloc[:, 0].dropna().to_list())
 
         for i, col_name in enumerate(columns):
             if col_name in self.__required_columns:
                 target_index = self.__columns[col_name] - 1
                 new_columns[target_index] = col_name
-                new_columns[i] = columns[target_index]
+                if len(first_column) > 1:
+                    new_columns[i] = columns[target_index]
+                else:
+                    new_columns[i] = columns[target_index - 1]
             else:
                 if new_columns[i] == '':
                     new_columns[i] = col_name
