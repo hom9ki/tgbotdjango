@@ -4,6 +4,7 @@ import re
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, List, Any, Dict
+from .settings import QUANTITY_KEYS
 
 
 class ColumnType(Enum):
@@ -37,6 +38,9 @@ class ColumnInfo:
 
 
 class SmartColumnDetector:
+
+    __QUANTITY_KEYS = QUANTITY_KEYS
+
     PATTERNS = {
         ColumnType.BRAND:
             [
@@ -76,16 +80,18 @@ class SmartColumnDetector:
             print('df is empty')
             return None
         stat = {}
-        # print(df.head())
+
         for i, column in enumerate(df.columns):
             column_data = df.iloc[:, i]
             stat[i] = self.analyze_column(column_data, i, column, stat)
 
         columns_name = {col.index: col.data_type.value for col in self.detect_title(stat)}
-        # print(f'col_info: {dict(sorted(columns_name.items()))}')
-        new_column = [columns_name.get(i) if columns_name.get(i) != 'undefined' else f'Column {i}'  for i in range(len(df.columns))]
+        new_column = [columns_name.get(i) if columns_name.get(i) != 'undefined' else f'Column {i}' for i in
+                      range(len(df.columns))]
         df.columns = new_column
-
+        match_quantity_columns = [col for col in df.columns if col in self.__QUANTITY_KEYS]
+        if len(match_quantity_columns) == 0:
+            df['quantity'] = 1
         return df
 
     def analyze_column(self, column_data: pd.Series, index: int, name: str, stat: dict):
@@ -297,7 +303,7 @@ class SmartColumnDetector:
                 avg_summ_data['avg_summ'] = avg_data
             else:
                 line.data_type = ColumnType.UNDEFINED
-        print(avg_summ_data)
+
         for i, line in enumerate(lines):
             if i != avg_summ_data['line']:
                 line.data_type = ColumnType.UNDEFINED

@@ -23,7 +23,8 @@ from .settings import BASE_DIR
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('core.urls'))
+    path('', include('core.urls')),
+    path('users/', include('users.urls')),
 ]
 
 if settings.DEBUG:

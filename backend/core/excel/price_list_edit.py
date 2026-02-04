@@ -2,7 +2,7 @@ import io
 
 import pandas as pd
 from pathlib import Path
-from .settings import PRICE_SETTINGS, PRICE_NAMES
+from .settings import PRICE_SETTINGS, PRICE_NAMES, QUANTITY_KEYS
 from .ple_v2 import SmartColumnDetector
 
 
@@ -10,13 +10,14 @@ class PriceListEdit:
     __PRICE_SETTINGS = PRICE_SETTINGS
     __PRICE_NAMES = PRICE_NAMES
     __ENCODINGS = ['utf-8', 'cp1251', 'windows-1251', 'iso-8859-1', 'latin1']
+    __QUANTITY_KEYS = QUANTITY_KEYS
 
     def __init__(self, file_bytes: bytes, file_name: str):
         self.__file_bytes = file_bytes
         self.__file_name = file_name
         self.__extension = Path(file_name).suffix
         self.__base_name = Path(file_name).stem
-        self.__columns = self.__PRICE_SETTINGS.get(self.__base_name, [])
+        self.__columns = self.__PRICE_SETTINGS.get(self.__edit_name(), [])
         self.__required_columns = [col for col in self.__columns.keys()]
         self.__max_count_col = max(self.__columns.values())
         self.__data = []
@@ -31,12 +32,19 @@ class PriceListEdit:
 
     @property
     def get_file_name(self):
-        self.__edit_name()
-        return self.__file_name
+        file_name = self.__edit_name()
+        return f'{file_name}{self.__extension}'
 
     def __edit_name(self):
-        if self.__base_name in self.__PRICE_NAMES:
-            self.__file_name = f'{self.__PRICE_NAMES[self.__base_name]}{self.__extension}'
+        words_file_name = self.__base_name.split('_')
+        for key, value in self.__PRICE_NAMES.items():
+            print(f'key: {key}, value: {value}')
+            print(all(word in words_file_name for word in value))
+            if all(word in words_file_name for word in value):
+                print(f'Имя файла {self.__file_name} изменено на {key}')
+                return key
+        else:
+            return self.__base_name
 
     def __read_xlsx_xls(self):
         try:
@@ -76,56 +84,108 @@ class PriceListEdit:
     def __create_data(self, df):
         print(df.head())
         columns = df.columns.tolist()
-        new_columns = [''] * len(columns)
+
+        new_columns = [''] * max(self.__max_count_col, len(columns))
+        print(f'columns: {len(columns)}, new_columns: {len(new_columns)}, self.__columns: {self.__max_count_col}')
         rows = []
 
         first_column = set(df.iloc[:, 0].dropna().to_list())
 
         for i, col_name in enumerate(columns):
+            print(new_columns)
             if col_name in self.__required_columns:
+                print(f'col_name: {self.__columns[col_name]}, i: {i}')
                 target_index = self.__columns[col_name] - 1
                 new_columns[target_index] = col_name
-                if len(first_column) > 1:
-                    new_columns[i] = columns[target_index]
-                else:
-                    new_columns[i] = columns[target_index - 1]
+                if i != target_index:
+                    new_columns[i] = f'Column_{i}'
             else:
-                if new_columns[i] == '':
+                if new_columns[i] in self.__required_columns:
+                    continue
+                else:
                     new_columns[i] = col_name
 
+        match_columns = [col for col in new_columns if col in self.__required_columns]
+        for i, col in enumerate(new_columns):
+            if col in self.__required_columns and self.__columns[col] - 1 != i:
+                new_columns[i] = f'Column_{i}'
+        new_columns = [col for col in new_columns if pd.isna(col) != True]
+        print(f'DF: {df.columns.tolist()}:\nnew_columns: {new_columns}\nmatch_columns: {match_columns}')
+
         for _, row in df.iterrows():
+            if len([col for col in row.tolist() if pd.isna(col) != True]) < 2:
+                continue
             rows.append({col: row.get(col) for col in new_columns})
 
-        print(f'DF: {df.columns.tolist()}:\nnew_columns: {new_columns}')
+        print(f'rows: {rows[:10]}')
         self.__data = rows
 
     def __read_file(self):
-        if self.__base_name not in self.__PRICE_SETTINGS:
-            print(f'Неизвестный файл {self.__file_name}')
+        new_df = None
+        file_name = self.__edit_name()
+        print(file_name)
+        if file_name not in self.__PRICE_SETTINGS:
+            print(f'Неизвестный файл {file_name}')
             self.__stream = None
         df = self.__read_file_data()
+        headers = df.columns.tolist()
+        print(f'Заголовки файла: {df.columns.tolist()}, {[str(col) for col in headers]}')
+        if len([col for col in headers if 'Unnamed' not in str(col)]) < 3:
+            for i, row in df[:10].iterrows():
+                print(f'Значения в строке {i}:{row.tolist()}')
+                row_values = row.tolist()
+                print(type(row_values))
+                if len([col for col in row_values if pd.isna(col) != True]) < 3:
+                    print(f'Файл {self.__file_name} содержит не нужные столбцы {row}, в строке {i}, '
+                          f'количество {len(['nan' == str(col).lower() for col in row_values])}')
+                else:
+                    df = df.iloc[i:]
+                    df.columns = row_values
+                    break
+
         missing_columns = [col for col in self.__required_columns if col not in df.columns]
 
         if len(missing_columns) == len(self.__required_columns):
             df = self.processor_header.analyze_df(df)
-            self.__create_data(df)
+            new_df = self.__create_dataframe(df)
+        elif len(missing_columns) == 1 and missing_columns[0] in self.__QUANTITY_KEYS:
+            print(f'В прайсе {self.__file_name} не найден столбец с количество товара {missing_columns[0]}')
+            df[missing_columns[0]] = 1
+            print(df.head())
+            new_df = self.__create_dataframe(df)
         elif missing_columns:
             raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
         elif not missing_columns:
-            # for i in range(self.__max_count_col):
-            #     self.__data[f'Column_{i}'] = [None] * len(df)
-            self.__create_data(df)
-        new_df = pd.DataFrame(self.__data)
-        column_names = self.__get_header_names()
-        # name_cols = [column_names.get(f'Column_{i}', f'Column_{i}') for i in range(len(df.columns))]
+            columns = df.columns.tolist()
 
-        new_df = new_df.rename(columns=column_names)
-        # new_df.columns = name_cols
+            col_position = {}
+            for i, col in enumerate(columns):
+                if col in self.__required_columns:
+                    col_position[col] = i + 1
+
+            if col_position == self.__columns:
+                print(f'Столбцы в файле {self.__file_name} в правильном порядке')
+                new_df = df
+            else:
+                new_df = self.__create_dataframe(df)
+
         output_stream = io.BytesIO()
         with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
             new_df.to_excel(writer, index=False, sheet_name='Лист1')
         output_stream.seek(0)
         self.__stream = output_stream.read()
+
+    def __create_dataframe(self, df):
+        self.__create_data(df)
+        new_df = pd.DataFrame(self.__data)
+        column_names = self.__get_header_names()
+
+        new_df = new_df.rename(columns=column_names)
+
+        return new_df
+
+    def check_file_name(self):
+        pass
 
 
 def file_path():
