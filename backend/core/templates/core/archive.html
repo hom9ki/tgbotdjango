@@ -14,7 +14,7 @@
             Добро пожаловать.
         </h1>
         <p class="lead text-muted">
-            Выберите нужные файлы для скачивания.
+            Укажите данные для поиска файлов
         </p>
     </div>
 
@@ -23,7 +23,7 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0" id="formTitle">Форма поиска</h5>
+                    <h5 class="mb-0" id="formTitle">Поиск:</h5>
                 </div>
                 <div class="card-body">
                     <div id="formContainer">
@@ -46,11 +46,13 @@
                         </button>
                     </div>
                 </div>
-                {% if files %}
-                {% for file in files %}
-                {% include 'core/file_card.html' %}
-                {% endfor %}
-                {% endif %}
+                <div class="card-list" id="filesList">
+                    {% if files %}
+                    {% for file in files %}
+                    {% include 'core/file_card.html' %}
+                    {% endfor %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

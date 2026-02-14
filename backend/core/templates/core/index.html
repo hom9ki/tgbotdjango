@@ -18,29 +18,6 @@
         </p>
     </div>
 
-    <!-- Статистика -->
-<!--    <div class="row mb-4 justify-content-center">-->
-<!--        <div class="col-lg-6">-->
-<!--            <div class="card">-->
-<!--                <div class="card-body text-center">-->
-<!--                    <h5 class="card-title">Статистика</h5>-->
-<!--                    <div class="row">-->
-<!--                        <div class="col-6">-->
-<!--                            <h3 class="text-primary" id="totalFiles">{{ count }}</h3>-->
-<!--                            <small class="text-muted">Файлов</small>-->
-<!--                        </div>-->
-<!--                        <div class="col-6">-->
-<!--                            <h3 class="text-success" id="totalSize">{{ total_size }}</h3>-->
-<!--                            <small class="text-muted">Всего</small>-->
-<!--                        </div>-->
-<!--                    </div>-->
-<!--                    {% if is_authenticated %}-->
-<!--                    <small class="text-muted d-block mt-2">Вы вошли как: {{ username }}</small>-->
-<!--                    {% endif %}-->
-<!--                </div>-->
-<!--            </div>-->
-<!--        </div>-->
-<!--    </div>-->
 
     <!-- Панель действий -->
     <div class="row mb-4 justify-content-center">
@@ -57,12 +34,9 @@
                         <button class="btn btn-success" id="loadMultiFormBtn">
                             <i class="bi bi-files me-2"></i>Работа с Прайс-листами
                         </button>
-                        <button class="btn btn-outline-secondary" id="refreshFilesBtn">
-                            <i class="bi bi-arrow-clockwise me-2"></i>Обновить список
-                        </button>
-                        <button class="btn btn-outline-danger" id="openSearchFormBtn">
+                        <a class="btn btn-outline-danger" id="openSearchFormBtn" href="{% url 'archive' %}">
                             <i class="bi bi-trash me-2"></i>Поиск файла в архиве
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -89,24 +63,24 @@
         </div>
     </div>
 
-    <!-- Список загруженных файлов -->
-    <div class="row mb-4 justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Загруженные файлы</h5>
-                </div>
-                <div class="card-list" id="fileList">
-                    {% if files %}
-                    {% for file in files %}
-                    {% include 'core/file_card.html' %}
-                    {% endfor %}
-                    {% endif %}
-                </div>
+    <!--    &lt;!&ndash; Список загруженных файлов &ndash;&gt;-->
+    <!--    <div class="row mb-4 justify-content-center">-->
+    <!--        <div class="col-lg-8">-->
+    <!--            <div class="card">-->
+    <!--                <div class="card-header d-flex justify-content-between align-items-center">-->
+    <!--                    <h5 class="mb-0">Загруженные файлы</h5>-->
+    <!--                </div>-->
+    <!--                <div class="card-list" id="fileList">-->
+    <!--                    {% if files %}-->
+    <!--                    {% for file in files %}-->
+    <!--                    {% include 'core/file_card.html' %}-->
+    <!--                    {% endfor %}-->
+    <!--                    {% endif %}-->
+    <!--                </div>-->
 
-            </div>
-        </div>
-    </div>
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
 </div>
 
 <!-- Шаблон для уведомлений -->

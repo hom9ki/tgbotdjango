@@ -62,27 +62,6 @@ def api_get_files(request):
     })
 
 
-@api_view(['GET'])
-def api_get_files_html(request):
-    user = request.user
-    if user.is_authenticated:
-        files = UploadedFile.objects.filter(uploaded_by=user).order_by('-created_at')
-    else:
-        files = UploadedFile.objects.filter(uploaded_by__isnull=True).order_by('-created_at')
-
-    file_card_html = ""
-    for file in files:
-        card_html = render_to_string('core/file_card.html', {
-            'file': file
-        }, request=request)
-        file_card_html += card_html
-    return Response({
-        'success': True,
-        'html': file_card_html,
-        'count': files.count()
-    })
-
-
 @api_view(['POST'])
 def api_file_save(request):
     saved_file = request.FILES.get('file')
@@ -428,12 +407,16 @@ def api_search_files(request):
     if to_date:
         parser = parse_date(to_date)
         files = files.filter(created_at__date__lte=parser)
-
-    serializer = UploadedFileSerializer(files, many=True, context={'request': request})
-    print(serializer.data)
+    file_card_html = ""
+    for file in files:
+        card_html = render_to_string('core/file_card.html', {
+            'file': file
+        }, request=request)
+        file_card_html += card_html
     return Response({
         'success': True,
-        'files': serializer.data,
+        'html': file_card_html,
+        'count': files.count()
     })
 
 

@@ -348,37 +348,6 @@ async function handleFormSubmit(form, type) {
     }
 }
 
-async function loadFilesList(){
-    const filesList = document.getElementById('fileList');
-    const countFiles = document.getElementById('totalFiles')
-    filesList.innerHTML = `
-        div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="text-muted mt-2">Загрузка файлов...</p>
-        </div>
-    `;
-
-    try{
-        const response = await fetch('/api/files/html/');
-        if(!response.ok){
-            throw new Error('Ошибка сети');
-        }
-
-        const data = await response.json();
-        console.log(data);
-        if (!data.success){
-            throw new Error(data.error);
-        }
-        filesList.innerHTML = data.html;
-//        countFiles.innerText = data.count;
-    } catch (error){
-        filesList.innerHTML = `
-        <div class="alert alert-danger">Ошибка: ${error.message}</div>
-        `;
-        }
-
-
-}
 
 
 // Загрузка статистики
@@ -398,74 +367,6 @@ async function loadStats() {
 
 
 
-// Удаление файла
-async function deleteFile(fileId) {
-    console.log('Удаление файла с ID:', fileId);
-    if (!confirm('Вы уверены, что хотите удалить этот файл?')) {
-        return;
-    }
-
-
-    let csrfToken = getCSRFToken();
-    console.log('CSRF Token:', csrfToken);
-    try {
-        const response = await fetch(`/api/files/${fileId}/delete/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const data = {}
-
-
-        if (response.status !== 204) {
-            data = await response.json();
-            showError(data.error || 'Ошибка при удалении файла');
-            loadStats();
-        } else {
-            loadStats();
-            showSuccess('Файл успешно удален');
-        }
-    } catch (error) {
-        showError('Ошибка сети: ' + error.message);
-    }
-
-    loadFilesList();
-}
-
-// Скачивание файла
-async function downloadFile(fileId) {
-    console.log('Скачивание файла с ID:', fileId);
-    try {
-        let csrfToken = getCSRFToken();
-        console.log('CSRF Token:', csrfToken);
-        const response = await fetch(`/api/files/${fileId}/download/`,{
-            method: 'GET',
-            credentials: 'include',
-            });
-        const data = await response.json();
-        console.log(data);
-        if (!data.success && response.ok) {
-            showError(data.error || 'Ошибка при скачивании файла');
-        }else if (data.success && response.ok){
-            const file = data.file;
-            const link = document.createElement('a');
-            link.href = file.download_url;
-            link.download = file.name;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            showSuccess('Файл успешно скачан')
-        }
-        }catch (error) {
-            showError('Ошибка сети: ' + error.message);
-        }
-}
 
 // Вспомогательные функции
 function showProgress(show) {
