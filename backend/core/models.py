@@ -1,6 +1,17 @@
 from django.db import models
 import os
 
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+def file_upload_path(instance, filename):
+    if 'оригинал' in instance.title.split(' '):
+        return f'uploads/originals/{filename}'
+    else:
+        return f'uploads/processed/{filename}'
+
 
 class UploadedFile(models.Model):
     types = (
@@ -10,9 +21,9 @@ class UploadedFile(models.Model):
         ('other', 'Другое'),
     )
 
-    uploaded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                     verbose_name='Пользователь')
-    file = models.FileField(upload_to='uploads/', verbose_name='Файл')
+    file = models.FileField(upload_to=file_upload_path, verbose_name='Файл')
     title = models.CharField(max_length=100, blank=True, null=True, verbose_name='Имя файла')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
     doc_type = models.CharField(choices=types, default='other', max_length=100, verbose_name='Тип документа')

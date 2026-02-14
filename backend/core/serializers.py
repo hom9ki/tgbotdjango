@@ -3,18 +3,11 @@ import time
 from rest_framework import serializers
 import os
 from .models import UploadedFile
-from django.contrib.auth.models import User
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email']
-        read_only_fields = ['id', 'username', 'email']
+from users.serializers import CustomUserSerializer
 
 
 class UploadedFileSerializer(serializers.ModelSerializer):
-    uploaded_by = UserSerializer(read_only=True)
+    uploaded_by = CustomUserSerializer(read_only=True)
     download_url = serializers.SerializerMethodField()
     filename = serializers.SerializerMethodField()
     filesize = serializers.SerializerMethodField()

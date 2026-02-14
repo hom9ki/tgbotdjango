@@ -19,28 +19,28 @@
     </div>
 
     <!-- Статистика -->
-    <div class="row mb-4 justify-content-center">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="card-title">Статистика</h5>
-                    <div class="row">
-                        <div class="col-6">
-                            <h3 class="text-primary" id="totalFiles">{{ count }}</h3>
-                            <small class="text-muted">Файлов</small>
-                        </div>
-                        <div class="col-6">
-                            <h3 class="text-success" id="totalSize">{{ total_size }}</h3>
-                            <small class="text-muted">Всего</small>
-                        </div>
-                    </div>
-                    {% if is_authenticated %}
-                    <small class="text-muted d-block mt-2">Вы вошли как: {{ username }}</small>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+<!--    <div class="row mb-4 justify-content-center">-->
+<!--        <div class="col-lg-6">-->
+<!--            <div class="card">-->
+<!--                <div class="card-body text-center">-->
+<!--                    <h5 class="card-title">Статистика</h5>-->
+<!--                    <div class="row">-->
+<!--                        <div class="col-6">-->
+<!--                            <h3 class="text-primary" id="totalFiles">{{ count }}</h3>-->
+<!--                            <small class="text-muted">Файлов</small>-->
+<!--                        </div>-->
+<!--                        <div class="col-6">-->
+<!--                            <h3 class="text-success" id="totalSize">{{ total_size }}</h3>-->
+<!--                            <small class="text-muted">Всего</small>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                    {% if is_authenticated %}-->
+<!--                    <small class="text-muted d-block mt-2">Вы вошли как: {{ username }}</small>-->
+<!--                    {% endif %}-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
 
     <!-- Панель действий -->
     <div class="row mb-4 justify-content-center">
@@ -60,8 +60,8 @@
                         <button class="btn btn-outline-secondary" id="refreshFilesBtn">
                             <i class="bi bi-arrow-clockwise me-2"></i>Обновить список
                         </button>
-                        <button class="btn btn-outline-danger" id="saveFileArchiveBtn">
-                            <i class="bi bi-trash me-2"></i>Сохранить файл в архиве
+                        <button class="btn btn-outline-danger" id="openSearchFormBtn">
+                            <i class="bi bi-trash me-2"></i>Поиск файла в архиве
                         </button>
                     </div>
                 </div>
@@ -95,11 +95,6 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Загруженные файлы</h5>
-                    <div>
-                        <button class="btn btn-sm btn-outline-secondary" id="refreshFilesBtn2">
-                            <i class="bi bi-arrow-clockwise"></i>
-                        </button>
-                    </div>
                 </div>
                 <div class="card-list" id="fileList">
                     {% if files %}

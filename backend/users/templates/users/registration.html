@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- Динамическая форма загрузки -->
+<div class="row mb-4 justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0" id="formTitle"></h5>
+
+            </div>
+            <div class="card-body">
+                <div id="formContainer">
+                    <div class="login-form" id="loginFormContainer">
+                        <h4 class="mb-3">
+                            <i class="bi bi-file-earmark-arrow-up me-2"></i> Регистрация и в системе
+                        </h4>
+
+                        <form id="loginForm" class="ajax-form" data-action="#" method="post">
+                            {% csrf_token %}
+                            {%for field in form %}
+                            {% if field.errors %}
+                            <ul class="errorlist">{{ field.errors }}</ul>
+                            {% endif %}
+                            <div class="mb-3">{{ field.label_tag }} <br> {{ field }}</div>
+                            {% endfor %}
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn">
+                                    <i class="bi bi-upload me-2"></i>Зарегистрироваться
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/loging.js' %}"></script>
+{% endblock %}

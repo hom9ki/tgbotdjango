@@ -33,7 +33,9 @@ class PriceListEdit:
     @property
     def get_file_name(self):
         file_name = self.__edit_name()
-        return f'{file_name}{self.__extension}'
+        if self.__extension == '.xlsx':
+            return f'{file_name}{self.__extension}'
+        return f'{file_name}.xlsx'
 
     def __edit_name(self):
         words_file_name = self.__base_name.split('_')

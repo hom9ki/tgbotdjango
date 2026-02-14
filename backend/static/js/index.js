@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 
     // Загружаем список файлов при открытии страницы
-    loadStats();
+//    loadStats();
     loadFilesList();
 });
 
@@ -41,13 +41,37 @@ function setupEventListeners() {
         loadForm('save')
     });
 
+    }
+
+//    const fileList = document.getElementById('fileList');
+//    if (fileList) {
+//        fileList.addEventListener('click', (e) => {
+//            const del = e.target.closest('[data-action="delete-file"]');
+//            const download = e.target.closest('[data-action="download-file"]');
+//            if (del){
+//                const fileId = del.dataset.fileId;
+//                deleteFile(fileId)
+//            }
+//            if (download){
+//                const fileId = download.dataset.fileId;
+//                downloadFile(fileId)
+//            }
+//        })
+//        }
+
+function fileListView(){
     const fileList = document.getElementById('fileList');
     if (fileList) {
         fileList.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-action="delete-file"]');
-            if (btn){
-                const fileId = btn.dataset.fileId;
+            const del = e.target.closest('[data-action="delete-file"]');
+            const download = e.target.closest('[data-action="download-file"]');
+            if (del){
+                const fileId = del.dataset.fileId;
                 deleteFile(fileId)
+            }
+            if (download){
+                const fileId = download.dataset.fileId;
+                downloadFile(fileId)
             }
         })
         }
@@ -346,7 +370,7 @@ async function loadFilesList(){
             throw new Error(data.error);
         }
         filesList.innerHTML = data.html;
-        countFiles.innerText = data.count;
+//        countFiles.innerText = data.count;
     } catch (error){
         filesList.innerHTML = `
         <div class="alert alert-danger">Ошибка: ${error.message}</div>
@@ -409,6 +433,38 @@ async function deleteFile(fileId) {
     }
 
     loadFilesList();
+}
+
+// Скачивание файла
+async function downloadFile(fileId) {
+    console.log('Скачивание файла с ID:', fileId);
+    try {
+        let csrfToken = getCSRFToken();
+        console.log('CSRF Token:', csrfToken);
+        const response = await fetch(`/api/files/${fileId}/download/`,{
+            method: 'GET',
+            credentials: 'include',
+            });
+        const data = await response.json();
+        console.log(data);
+        if (!data.success && response.ok) {
+            showError(data.error || 'Ошибка при скачивании файла');
+        }else if (data.success && response.ok){
+            const file = data.file;
+            const link = document.createElement('a');
+            link.href = file.download_url;
+            link.download = file.name;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('Файл успешно скачан')
+        }
+        }catch (error) {
+            showError('Ошибка сети: ' + error.message);
+        }
 }
 
 // Вспомогательные функции

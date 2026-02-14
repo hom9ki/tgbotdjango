@@ -2,42 +2,92 @@ console.log('archive.js загружен')
 //Инициализация DOM элементов
 document.addEventListener('DOMContentLoaded', function(){
     //Установка обработчиков событий
-    setupEventListeners();
+    setupSearchFormListener();
+    renderResults();
+    fileListView();
 });
 
 
-//Настройка обработчиков событий
-function setupEventListeners(){
-    //Обработчики кнопок и событий
-    loadSearchForm()
+async function setupSearchFormListener(){
+    const form = document.getElementById('archiveSearchForm');
 
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        await performSearch();
+    });
+
+    document.getElementById('clearSearchBtn').addEventListener('click', async () => {
+    form.reset();
+    await performSearch();
+    });
 }
 
-async function loadSearchForm(){
-    const formContainer = document.getElementById('formContainer');
+async function performSearch(){
+    const params = new URLSearchParams();
+    const formData = new FormData(document.getElementById('archiveSearchForm'))
+    console.log(params, formData)
 
-    formContainer.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Загрузка...</span>
-            </div>
-            <p class="text-muted mt-2">Загрузка формы...</p>
+    for (let [key, value] of formData) {
+        if (value) params.append(key, value);
+    }
+
+    try {
+        const response = await fetch(`/api/archive/search/?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+            renderResults(data.files)
+        } else {
+         showError(data.error)
+        }
+    } catch (error) {
+            showError('Ошибка при загрузке данных')
+        }
+    }
+
+async function renderResults(files){
+    const filesList = document.getElementById('fileList');
+    filesList.innerHTML = `
+        div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Загрузка файлов...</p>
         </div>
     `;
 
-    try {
-        const response = await fetch(`/api/archive/search`);
-        if (!response.ok){
-            throw new Error(`Ошибка загрузки формы поиска: ${response.status}`)
-        } else {
-            const data = await response.json();
-            console.log(data)
-            if (data.success){
-                formContainer.innerHTML = data.search_form;
-            }
+    try{
+        const response = await fetch('/api/files/html/');
+        if(!response.ok){
+            throw new Error('Ошибка сети');
         }
-    } catch (error) {
-        console.error('Ошибка загрузки формы поиска:', error);
-    }
 
+        const data = await response.json();
+        console.log(data);
+        if (!data.success){
+            throw new Error(data.error);
+        }
+        filesList.innerHTML = data.html;
+
+    } catch (error){
+        filesList.innerHTML = `
+        <div class="alert alert-danger">Ошибка: ${error.message}</div>
+        `;
+        }
+}
+
+async function fileListView(){
+    const fileList = document.getElementById('fileList');
+    if (fileList) {
+        fileList.addEventListener('click', (e) => {
+            const del = e.target.closest('[data-action="delete-file"]');
+            const download = e.target.closest('[data-action="download-file"]');
+            if (del){
+                const fileId = del.dataset.fileId;
+                deleteFile(fileId)
+            }
+            if (download){
+                const fileId = download.dataset.fileId;
+                downloadFile(fileId)
+            }
+        })
+        }
 }

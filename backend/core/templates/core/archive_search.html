@@ -1,50 +1,43 @@
-{% load static %}
-<div class="search-form" id="searchFormContainer">
-    <h4 class="mb-3">
-        <i class="bi bi-file-earmark-arrow-up me-2">
-            Поиск загруженных файлов
-        </i>
-    </h4>
-
-    <form id="archiveSearchForm" class="ajax-form" data-action="#">
-        {% csrf_token %}
-        <!--Поля поиска-->
-        <div class="mb-3">
-            <label class="form-select-label">Выберите пользователя:</label>
-            {% if users %}
-            <select name="user" class="form-select">
-                {% for user in users %}
-                <option value="{{ user.id }}">{{ user.first_name }} {{ user.last_name }}</option>
-                {% endfor %}
-            </select>
-            {% else %}
-            <p>Пользователей не найдено</p>
-            {% endif %}
-        </div>
-
-        <div class="mb-3">
-            {% if doc_types %}
-            <label class="form-select-label">Выберите тип файла:</label>
-            <select name="file_type" class="form-select">
-                {% for file_type in doc_types %}
-                <option value="{{ file_type }}">{{ file_type }}</option>
-                {% endfor %}
-            </select>
-            {% else %}
-            <p>Типы файлов не найдены</p>
-            {% endif %}
+<div class="search-form p-3 border-bottom bg-light">
+    <h6>Фильтры поиска</h6>
+    <form id="archiveSearchForm">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="searchTitle" class="form-label">Название</label>
+                <input type="text" class="form-control form-control-sm" id="searchTitle" name="title">
+            </div>
+            <div class="col-md-4">
+                <label for="searchDocType" class="form-label">Тип документа</label>
+                <select class="form-select form-select-sm" id="searchDocType" name="doc_type">
+                    <option value="">Все</option>
+                    {% for value, label in file_types %}
+                    <option value="{{value}}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="searchUser" class="form-label">Пользователь</label>
+                <select class="form-select form-select-sm" id="searchUser" name="uploaded_by">
+                    <option value="">Все</option>
+                    {% for user in users %}
+                    <option value="{{user.id}}">{{ user.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="searchFrom" class="form-label">От даты</label>
+                <input type="date" class="form-control form-control-sm" id="searchFrom" name="from_date">
+            </div>
+            <div class="col-md-4">
+                <label for="searchTo" class="form-label">До даты</label>
+                <input type="date" class="form-control form-control-sm" id="searchTo" name="to_date">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="d-grid gap-2 w-100">
+                    <button type="submit" id="searchBtn" class="btn btn-sm btn-primary">Искать</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSearchBtn">Сброс</button>
+                </div>
+            </div>
         </div>
     </form>
-    <!-- Сообщения -->
-    <div class="alert d-none" id="uploadStatus"></div>
-
-    <!-- Кнопки -->
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary flex-grow-1" id="submitBtn">
-            <i class="bi bi-upload me-2"></i>Найти
-        </button>
-
-    </div>
 </div>
-
-
