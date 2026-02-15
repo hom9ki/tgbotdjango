@@ -5,7 +5,6 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('archive/', views.archive, name='archive'),
 
-    path('api/files/', views.api_get_files, name='api_get_files'),
     path('api/files/archive/save/', views.api_file_save, name='api_file_save'),
     path('api/files/<int:file_id>/delete/', views.api_delete_file, name='api_delete_file'),
     path('api/files/<int:file_id>/download/', views.api_download_file, name='api_download_file'),

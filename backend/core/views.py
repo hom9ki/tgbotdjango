@@ -17,6 +17,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.decorators import login_required
 from django.utils.dateparse import parse_date
+from .sevices import get_file_information, create_in_memory_uploaded_file
 
 import base64
 
@@ -26,40 +27,12 @@ from .excel.multiplicity_report import miltiplicity_processing_excel
 @login_required(login_url='/users/account/login/')
 def index(request):
     user = request.user
-    print(f'USER: {user}')
-    if user.is_authenticated:
-        user_files = UploadedFile.objects.all()
-    else:
-        user_files = UploadedFile.objects.filter(uploaded_by__isnull=True)
 
-    total_files = user_files.count()
-
-    print(user_files)
     context = {
         'is_authenticated': user.is_authenticated,
         'username': user.username if user.is_authenticated else None,
-        'total_files': total_files,
     }
     return render(request, 'core/index.html', context)
-
-
-@api_view(['GET'])
-def api_get_files(request):
-    """Список всех файлов"""
-    user = request.user
-    if user.is_authenticated:
-        files = UploadedFile.objects.filter(uploaded_by=user).order_by('-created_at')
-    else:
-        files = UploadedFile.objects.filter(uploaded_by__isnull=True).order_by('-created_at')
-
-    serializer = UploadedFileSerializer(
-        files, many=True, context={'request': request}
-    )
-    return Response({
-        'success': True,
-        'files': serializer.data,
-        'count': len(serializer.data)
-    })
 
 
 @api_view(['POST'])
@@ -97,8 +70,6 @@ def api_file_save(request):
 def api_upload_single_file(request):
     """Загрузка одного файла"""
     uploaded_file = request.FILES.get('file')
-    print(uploaded_file)
-    title = request.POST.get('title', '')
     original_extension = Path(uploaded_file.name).suffix
     final_name = f'Кратность {original_extension}'
     if not uploaded_file:
@@ -108,37 +79,27 @@ def api_upload_single_file(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     content_type = uploaded_file.content_type
-    try:
-        original_filename = uploaded_file.name
-        original_bytes = uploaded_file.read()
-        uploaded_file.seek(0)
-        file_bytes = uploaded_file.read()
-
-        processed_file_bytes = miltiplicity_processing_excel(file_bytes)
-        processed_stream = io.BytesIO(processed_file_bytes)
-        uploaded_file.seek(0)
-    except Exception as e:
-        return Response({
-            'success': False,
-            'error': {'file': f'Ошибка обработки: {str(e)}'}
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    original_uploaded_file = InMemoryUploadedFile(
-        file=io.BytesIO(original_bytes),
-        field_name='file',
-        name=original_filename,
-        content_type=uploaded_file.content_type,
-        size=len(original_bytes),
-        charset=None
-    )
-
-    original_data = {
-        'file': original_uploaded_file,
-        'title': f'{request.data.get('title', '')} оригинал',
-        'description': request.data.get('description', ''),
-        'doc_type': request.data.get('doc_type', 'other'),
-        'should_compress': request.data.get('should_compress', False)
-    }
+    # try:
+    #     original_filename = uploaded_file.name
+    #
+    #     original_bytes = uploaded_file.read()
+    #     uploaded_file.seek(0)
+    # except Exception as e:
+    #     return Response({
+    #         'success': False,
+    #         'error': {'file': f'Ошибка обработки: {str(e)}'}
+    #     }, status=status.HTTP_400_BAD_REQUEST)
+    #
+    # original_uploaded_file = InMemoryUploadedFile(
+    #     file=io.BytesIO(original_bytes),
+    #     field_name='file',
+    #     name=original_filename,
+    #     content_type=uploaded_file.content_type,
+    #     size=len(original_bytes),
+    #     charset=None
+    # )
+    original_uploaded_file, file_bytes = create_in_memory_uploaded_file(uploaded_file)
+    original_data = get_file_information(original_uploaded_file, request, 'nomenclature', 'оригинал')
 
     original_serializer = FileUploadSerializer(
         data=original_data, context={'request': request}
@@ -151,6 +112,12 @@ def api_upload_single_file(request):
             'error': original_serializer.errors,
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    # file_bytes = uploaded_file.read()
+
+    processed_file_bytes = miltiplicity_processing_excel(file_bytes)
+
+    processed_stream = io.BytesIO(processed_file_bytes)
+    uploaded_file.seek(0)
     processed_uploaded_file = InMemoryUploadedFile(
         file=processed_stream,
         field_name='file',
@@ -161,15 +128,7 @@ def api_upload_single_file(request):
     )
     processed_file_base64 = base64.b64encode(processed_file_bytes).decode('utf-8')
 
-    print(request.data)
-
-    data = {
-        'file': processed_uploaded_file,
-        'title': request.data.get('title', ''),
-        'description': request.data.get('description', ''),
-        'doc_type': request.data.get('doc_type', 'other'),
-        'should_compress': request.data.get('should_compress', False)
-    }
+    data = get_file_information(processed_uploaded_file, request, 'other')
 
     serializer = FileUploadSerializer(
         data=data,
@@ -219,32 +178,9 @@ def api_upload_multiple_files(request):
     for up_file in files_list:
         print(f'Обработка файла: {up_file.name}')
         try:
-            original_filename = up_file.name
-            up_file.seek(0)
-            original_bytes = up_file.read()
+            original_uploaded_file, original_bytes = create_in_memory_uploaded_file(up_file)
 
-            processor = PriceListEdit(original_bytes, up_file.name)
-            processor_stream = processor.get_stream
-            processor_filename = processor.get_file_name
-            processor_content_type = up_file.content_type
-            print(f'Processor content type: {processor_content_type}')
-
-            original_uploaded_file = InMemoryUploadedFile(
-                file=io.BytesIO(original_bytes),
-                field_name='file',
-                name=original_filename,
-                content_type=processor_content_type,
-                size=len(original_bytes),
-                charset=None
-            )
-
-            original_data = {
-                'file': original_uploaded_file,
-                'title': f'{processor_filename.split('.')[0]} оригинал',
-                'description': request.data.get('description', ''),
-                'doc_type': request.data.get('doc_type', 'price'),
-                'should_compress': request.data.get('should_compress', False)
-            }
+            original_data = get_file_information(original_uploaded_file, request, 'price', 'оригинал')
 
             original_serializer = FileUploadSerializer(data=original_data, context={'request': request})
             if original_serializer.is_valid():
@@ -257,7 +193,11 @@ def api_upload_multiple_files(request):
                     'action': 'multiple',
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            processed_stream = io.BytesIO(processor_stream)
+
+            processor = PriceListEdit(original_bytes, up_file.name)
+            processor_stream_bytes = processor.get_stream
+            processor_filename = processor.get_file_name
+            processed_stream = io.BytesIO(processor_stream_bytes)
             up_file.seek(0)
 
             processed_uploaded_file = InMemoryUploadedFile(
@@ -265,17 +205,11 @@ def api_upload_multiple_files(request):
                 field_name='file',
                 name=processor_filename,
                 content_type=up_file.content_type,
-                size=len(processor_stream),
+                size=len(processor_stream_bytes),
                 charset=None
             )
 
-            data = {
-                'file': processed_uploaded_file,
-                'title': processor_filename.split('.')[0],
-                'description': request.data.get('description', ''),
-                'doc_type': request.data.get('doc_type', 'other'),
-                'should_compress': request.data.get('should_compress', False)
-            }
+            data = get_file_information(processed_uploaded_file, request, 'other')
 
             if 'title' not in data:
                 data['title'] = up_file.name.split('.')[0]
@@ -288,7 +222,7 @@ def api_upload_multiple_files(request):
 
                 processed_files.append({
                     'filename': f"{processor_filename}",
-                    'content': base64.b64encode(processor_stream).decode('utf-8'),
+                    'content': base64.b64encode(processor_stream_bytes).decode('utf-8'),
                     'content_type': up_file.content_type,
                 })
             else:
