@@ -18,6 +18,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.decorators import login_required
 from django.utils.dateparse import parse_date
 from .sevices import get_file_information, create_in_memory_uploaded_file
+from .excel.pipeline import ProcessingPipeline
+from .excel.registry import get_processor
 
 import base64
 
@@ -79,25 +81,6 @@ def api_upload_single_file(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     content_type = uploaded_file.content_type
-    # try:
-    #     original_filename = uploaded_file.name
-    #
-    #     original_bytes = uploaded_file.read()
-    #     uploaded_file.seek(0)
-    # except Exception as e:
-    #     return Response({
-    #         'success': False,
-    #         'error': {'file': f'Ошибка обработки: {str(e)}'}
-    #     }, status=status.HTTP_400_BAD_REQUEST)
-    #
-    # original_uploaded_file = InMemoryUploadedFile(
-    #     file=io.BytesIO(original_bytes),
-    #     field_name='file',
-    #     name=original_filename,
-    #     content_type=uploaded_file.content_type,
-    #     size=len(original_bytes),
-    #     charset=None
-    # )
     original_uploaded_file, file_bytes = create_in_memory_uploaded_file(uploaded_file)
     original_data = get_file_information(original_uploaded_file, request, 'nomenclature', 'оригинал')
 
@@ -111,8 +94,6 @@ def api_upload_single_file(request):
             'success': False,
             'error': original_serializer.errors,
         }, status=status.HTTP_400_BAD_REQUEST)
-
-    # file_bytes = uploaded_file.read()
 
     processed_file_bytes = miltiplicity_processing_excel(file_bytes)
 
@@ -174,6 +155,8 @@ def api_upload_multiple_files(request):
 
     processed_files = []
     uploaded_files_data = []
+    # TODO: Добавить работу с файлами в которых есть ошибки
+    error_files = []
 
     for up_file in files_list:
         print(f'Обработка файла: {up_file.name}')
@@ -193,10 +176,11 @@ def api_upload_multiple_files(request):
                     'action': 'multiple',
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            processor_type = get_processor('price_list')
+            pipeline = ProcessingPipeline(processor_type)
 
-            processor = PriceListEdit(original_bytes, up_file.name)
-            processor_stream_bytes = processor.get_stream
-            processor_filename = processor.get_file_name
+            processor_stream_bytes, metadata = pipeline.run(original_bytes, up_file.name)
+            processor_filename = metadata.get('filename')
             processed_stream = io.BytesIO(processor_stream_bytes)
             up_file.seek(0)
 

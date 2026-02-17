@@ -16,15 +16,6 @@ class ColumnType(Enum):
     UNDEFINED = 'undefined'
 
 
-# @dataclass
-# class ColumnInfo:
-#     index: int
-#     name: Optional[str]
-#     data_type = ColumnType
-#     confidence = float
-#     sample_value: List[Any]
-#     characteristics: Dict[str, Any]
-
 @dataclass
 class ColumnInfo:
     index: int
@@ -38,7 +29,6 @@ class ColumnInfo:
 
 
 class SmartColumnDetector:
-
     __QUANTITY_KEYS = QUANTITY_KEYS
 
     PATTERNS = {

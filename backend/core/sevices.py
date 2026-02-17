@@ -21,10 +21,13 @@ def create_in_memory_uploaded_file(file):
 
 
 def get_file_information(file, request, doc_type_default, contxt=''):
-    # TODO: Добавить обработку title, проверять если пусто то брать из файла
+    title = f'{request.data.get('title', '')}'.rstrip()
+    if title != '':
+        title = file.name.split('.')[0]
+
     return {
         'file': file,
-        'title': f'{request.data.get('title', '')} {contxt}'.rstrip(),
+        'title': f'{title} {contxt}'.rstrip(),
         'description': request.data.get('description', ''),
         'doc_type': request.data.get('doc_type', doc_type_default),
         'should_compress': request.data.get('should_compress', False)
