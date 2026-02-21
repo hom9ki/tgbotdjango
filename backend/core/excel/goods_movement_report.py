@@ -110,7 +110,7 @@ class GoodsMovementReport:
     def get_headers_index(df: pd.DataFrame):
         return df.columns.tolist().index('К перемещению К') + 1
 
-    def read_file(self) -> BytesIO:
+    def read_file(self) -> bytes:
         """Чтение файла"""
         input_stream = io.BytesIO(self.file_bytes)
         df = self.pandas_open_file(input_stream)
@@ -122,4 +122,4 @@ class GoodsMovementReport:
         self.openpyxl_update_file(data, worksheet, df)
         output_stream = self.openpyxl_save_file(workbook)
 
-        return output_stream
+        return output_stream.getvalue()

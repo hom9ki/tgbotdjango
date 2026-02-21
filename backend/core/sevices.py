@@ -1,7 +1,5 @@
 import io
 
-from .excel.price_list_edit import PriceListEdit
-from .excel.multiplicity_report import miltiplicity_processing_excel
 from django.core.files.uploadedfile import InMemoryUploadedFile
 
 

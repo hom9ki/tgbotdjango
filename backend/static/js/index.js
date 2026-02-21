@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Загружаем список файлов при открытии страницы
 //    loadStats();
-    loadFilesList();
+//    loadFilesList();
 });
 
 // Настройка всех обработчиков событий
@@ -21,6 +21,10 @@ function setupEventListeners() {
 
     document.getElementById('loadMultiFormBtn')?.addEventListener('click', function() {
         loadForm('multiple');
+    });
+
+    document.getElementById('loadGoodsmoveFormBtn')?.addEventListener('click', function() {
+        loadForm('goodsmove');
     });
 
     document.getElementById('refreshFilesBtn')?.addEventListener('click', function() {
@@ -43,21 +47,6 @@ function setupEventListeners() {
 
     }
 
-//    const fileList = document.getElementById('fileList');
-//    if (fileList) {
-//        fileList.addEventListener('click', (e) => {
-//            const del = e.target.closest('[data-action="delete-file"]');
-//            const download = e.target.closest('[data-action="download-file"]');
-//            if (del){
-//                const fileId = del.dataset.fileId;
-//                deleteFile(fileId)
-//            }
-//            if (download){
-//                const fileId = download.dataset.fileId;
-//                downloadFile(fileId)
-//            }
-//        })
-//        }
 
 function fileListView(){
     const fileList = document.getElementById('fileList');
@@ -147,7 +136,9 @@ function setupFormHandlers() {
     // Находим формы внутри контейнера
     const singleForm = formContainer.querySelector('#singleUploadForm');
     const multiForm = formContainer.querySelector('#multiUploadForm');
+    const goodsmoveForm = formContainer.querySelector('#goodsMoveForm');
     const saveForm = formContainer.querySelector('#saveFileForm');
+    console.log(singleForm, multiForm, goodsmoveForm, saveForm);
 
     if (singleForm) {
         setupSingleForm(singleForm);
@@ -155,6 +146,8 @@ function setupFormHandlers() {
         setupMultiForm(multiForm);
     } else if (saveForm){
         setupSingleForm(saveForm);
+    } else if (goodsmoveForm){
+        setupGoodsMoveForm(goodsmoveForm);
     }
 }
 
@@ -213,7 +206,54 @@ function setupMultiForm(form) {
             }
         });
     }
+    // Обработчик отправки формы
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        handleFormSubmit(this, 'multiple');
+    });
 
+    // Кнопка переключения на одиночную загрузку
+    const switchToSingleBtn = form.querySelector('[onclick*="switchToSingleForm"]');
+    if (switchToSingleBtn) {
+        switchToSingleBtn.onclick = function() {
+            loadForm('single');
+        };
+    }
+}
+
+// Настройка формы для нескольких файлов
+function setupGoodsMoveForm(form) {
+    const fileInput = form.querySelector('#goodsMoveInput');
+    const filesPreview = form.querySelector('#filesPreview');
+    const selectedFilesList = form.querySelector('#selectedFilesList');
+
+
+    // Обработчик выбора файлов
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                selectedFilesList.style.display = 'block';
+                filesPreview.innerHTML = '';
+
+                Array.from(this.files).forEach((file, index) => {
+                    const size = formatFileSize(file.size);
+                    filesPreview.innerHTML += `
+                        <div class="list-group-item py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <span>${file.name}</span>
+                                </div>
+                                <small class="text-muted">${size}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                selectedFilesList.style.display = 'none';
+            }
+        });
+    }
     // Обработчик отправки формы
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -257,13 +297,23 @@ async function handleFormSubmit(form, type) {
     }
 
     isUploading = true;
-
+    const csrfToken = null;
     try {
+        const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
+
+        if (csrfInput){
+           const csrfToken = csrfInput.value;
+           console.log('CSRF Token:', csrfToken);
+        } else {
+           const csrfToken = getCSRFToken();
+        }
+
+
         const response = await fetch(form.dataset.action, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-CSRFToken': csrfToken,
             }
         });
 
@@ -434,4 +484,3 @@ function formatFileSize(bytes) {
 
 // Делаем функции глобальными (если все еще нужны)
 window.loadForm = loadForm;
-window.deleteFile = deleteFile;

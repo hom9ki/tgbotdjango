@@ -6,6 +6,7 @@ class GoodsMovementProcessor(FileProcessor):
     def process(self, file_bytes: bytes, file_name: str):
         try:
             editor = GoodsMovementReport(file_bytes, file_name)
+            print(f'Обработка файла {file_name} перемещения товаров завершена!')
             processed_stream = editor.get_stream
             new_filename = editor.get_filename
 

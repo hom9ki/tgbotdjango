@@ -34,6 +34,9 @@
                         <button class="btn btn-success" id="loadMultiFormBtn">
                             <i class="bi bi-files me-2"></i>Работа с Прайс-листами
                         </button>
+                        <button class="btn btn-secondary" id="loadGoodsmoveFormBtn">
+                            <i class="bi bi-file-earmark-plus me-2"></i>Проверка ежедневного движения товаров
+                        </button>
                         <a class="btn btn-outline-danger" id="openSearchFormBtn" href="{% url 'archive' %}">
                             <i class="bi bi-trash me-2"></i>Поиск файла в архиве
                         </a>
@@ -62,25 +65,6 @@
             </div>
         </div>
     </div>
-
-    <!--    &lt;!&ndash; Список загруженных файлов &ndash;&gt;-->
-    <!--    <div class="row mb-4 justify-content-center">-->
-    <!--        <div class="col-lg-8">-->
-    <!--            <div class="card">-->
-    <!--                <div class="card-header d-flex justify-content-between align-items-center">-->
-    <!--                    <h5 class="mb-0">Загруженные файлы</h5>-->
-    <!--                </div>-->
-    <!--                <div class="card-list" id="fileList">-->
-    <!--                    {% if files %}-->
-    <!--                    {% for file in files %}-->
-    <!--                    {% include 'core/file_card.html' %}-->
-    <!--                    {% endfor %}-->
-    <!--                    {% endif %}-->
-    <!--                </div>-->
-
-    <!--            </div>-->
-    <!--        </div>-->
-    <!--    </div>-->
 </div>
 
 <!-- Шаблон для уведомлений -->

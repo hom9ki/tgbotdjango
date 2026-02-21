@@ -69,6 +69,75 @@ def api_file_save(request):
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
+def api_upload_file_return_original(request):
+    upload_files = request.FILES.getlist('files')
+    print(f'Обработка файлов: {upload_files}')
+    if not upload_files:
+        return Response({
+            'success': False,
+            'error': {'files': 'Файл не выбран'},
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    processed_files = []
+    uploaded_files_data = []
+    user_processor_type = get_processor(request.data.get('processing_type'))
+
+    print(f'Тип процессора: {user_processor_type}')
+    for file in upload_files:
+        try:
+            uploaded_file, file_bytes = create_in_memory_uploaded_file(file)
+            print(f'Файл: {uploaded_file}')
+            pipeline = ProcessingPipeline(user_processor_type)
+            print(f'Пайплайн: {pipeline}, {type(pipeline)}')
+            processor_stream_bytes, metadata = pipeline.run(file_bytes, file.name)
+
+            processor_filename = metadata.get('filename')
+            processed_stream = io.BytesIO(processor_stream_bytes)
+            file.seek(0)
+            processed_uploaded_file = InMemoryUploadedFile(
+                file=processed_stream,
+                field_name='file',
+                name=processor_filename,
+                content_type=file.content_type,
+                size=len(processor_stream_bytes),
+                charset=None
+            )
+            data = get_file_information(processed_uploaded_file, request, 'other')
+
+            if 'title' not in data:
+                data['title'] = file.name.split('.')[0]
+            serializer = FileUploadSerializer(data=data, context={'request': request})
+
+            if serializer.is_valid():
+                upload_file = serializer.save()
+                uploaded_files_data.append(UploadedFileSerializer(upload_file, context={'request': request}).data)
+
+                processed_files.append({
+                    'filename': processor_filename,
+                    'content': base64.b64encode(processor_stream_bytes).decode('utf-8'),
+                    'content_type': file.content_type
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'error': serializer.errors,
+                    'action': 'multiple',
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f'Ошибка обработки файла {file.name}: {str(e)}')
+            return Response({
+                'success': False,
+                'error': {'file': f'Ошибка обработки: {str(e)}'}
+            }, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'success': True,
+        'message': 'Файлы успешно обработаны',
+        'processed_files': processed_files,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
 def api_upload_single_file(request):
     """Загрузка одного файла"""
     uploaded_file = request.FILES.get('file')
@@ -172,6 +241,7 @@ def api_upload_multiple_files(request):
             if original_serializer.is_valid():
                 original_instance = original_serializer.save()
                 uploaded_files_data.append(UploadedFileSerializer(original_instance, context={'request': request}).data)
+
             else:
                 return Response({
                     'success': False,
@@ -236,13 +306,16 @@ def api_upload_multiple_files(request):
 @api_view(['GET'])
 def api_get_form(request, form_type='single'):
     """Получение формы для загрузки"""
+    print(f'Тип формы: {form_type}')
     try:
         file_types = UploadedFile.types
         processing_types = PROCESSORS.keys()
         if form_type == 'multiple':
-            template = 'core/multi_upload_form.html'
+            template = 'core/price_form_container.html'
         elif form_type == 'single':
-            template = 'core/single_upload_form.html'
+            template = 'core/multiplicity_form_container.html'
+        elif form_type == 'goodsmove':
+            template = 'core/goodsmove_form_container.html'
         else:
             template = 'core/saved_form.html'
 
@@ -251,7 +324,7 @@ def api_get_form(request, form_type='single'):
             'form_type': form_type,
             'file_types': file_types,
             'processing_types': processing_types,
-        })
+        }, request=request)
 
         return Response({
             'success': True,

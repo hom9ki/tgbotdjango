@@ -1,0 +1,8 @@
+<div class="upload-form" id="uploadFormContainer">
+    <h4 class="mb-3">
+        <i class="bi bi-file-earmark-arrow-up me-2"></i>Загрузка одного файла
+    </h4>
+    <form id="goodsMoveForm" class="ajax-form" data-action="{% url 'api_upload_file_return_original' %}">
+        {% include "core/multi_form_fields.html" %}
+    </form>
+</div>

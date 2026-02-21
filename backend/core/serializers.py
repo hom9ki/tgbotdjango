@@ -91,6 +91,7 @@ class MultiFileUploadSerializer(serializers.Serializer):
     )
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     should_compress = serializers.BooleanField(default=False, required=False)
+    processing_type = serializers.CharField(required=True, allow_blank=True)
 
     def validate_files(self, files):
         if not files:
