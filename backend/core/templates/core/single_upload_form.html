@@ -39,6 +39,16 @@
             </select>
         </div>
 
+        <!-- Тип обработки файла -->
+        <div class="mb-3">
+            <label class="form-label">Тип обработки файла:</label>
+            <select class="form-select" name="processing_type">
+                {% for value in processing_types %}
+                <option value="{{value}}">{{ value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <!-- Описание -->
         <div class="mb-3">
             <label class="form-label">Описание (необязательно):</label>

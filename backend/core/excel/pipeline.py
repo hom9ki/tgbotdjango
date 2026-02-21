@@ -14,7 +14,5 @@ class ProcessingPipeline:
 
         if meta.get('success'):
             current_bytes = processed_bytes
-            if meta.get('filename'):
-                current_filename = meta.get('filename')
 
         return current_bytes, meta

@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.dateparse import parse_date
 from .sevices import get_file_information, create_in_memory_uploaded_file
 from .excel.pipeline import ProcessingPipeline
-from .excel.registry import get_processor
+from .excel.registry import get_processor, PROCESSORS
 
 import base64
 
@@ -72,6 +72,7 @@ def api_file_save(request):
 def api_upload_single_file(request):
     """Загрузка одного файла"""
     uploaded_file = request.FILES.get('file')
+    print(f'Тип процессора: {request.FILES}')
     original_extension = Path(uploaded_file.name).suffix
     final_name = f'Кратность {original_extension}'
     if not uploaded_file:
@@ -94,7 +95,9 @@ def api_upload_single_file(request):
             'success': False,
             'error': original_serializer.errors,
         }, status=status.HTTP_400_BAD_REQUEST)
-
+    user_type_processor = request.data.get('processing_type')
+    processor_type = get_processor(user_type_processor)
+    pipeline = ProcessingPipeline(processor_type)
     processed_file_bytes = miltiplicity_processing_excel(file_bytes)
 
     processed_stream = io.BytesIO(processed_file_bytes)
@@ -235,6 +238,7 @@ def api_get_form(request, form_type='single'):
     """Получение формы для загрузки"""
     try:
         file_types = UploadedFile.types
+        processing_types = PROCESSORS.keys()
         if form_type == 'multiple':
             template = 'core/multi_upload_form.html'
         elif form_type == 'single':
@@ -245,14 +249,16 @@ def api_get_form(request, form_type='single'):
         form_html = render_to_string(template, {
             'csrf_token': request.META.get('CSRF_COOKIE'),
             'form_type': form_type,
-            'file_types': file_types
+            'file_types': file_types,
+            'processing_types': processing_types,
         })
 
         return Response({
             'success': True,
             'form_html': form_html,
             'form_type': form_type,
-            'file_types': file_types
+            'file_types': file_types,
+            'processing_types': processing_types
 
         }, status=status.HTTP_200_OK)
     except Exception as e:

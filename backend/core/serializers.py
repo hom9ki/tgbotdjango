@@ -41,14 +41,16 @@ class UploadedFileSerializer(serializers.ModelSerializer):
 
 class FileUploadSerializer(serializers.ModelSerializer):
     should_compress = serializers.BooleanField(default=False, required=False)
+    processing_type = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = UploadedFile
-        fields = ['file', 'title', 'doc_type', 'description', 'should_compress']
+        fields = ['file', 'title', 'doc_type', 'description', 'should_compress', 'processing_type']
         extra_kwargs = {
             'title': {'required': False, 'allow_blank': True},
             'description': {'required': True, 'allow_blank': True}
         }
+
 
     def validate_file(self, value):
         max_size = 50 * 1024 * 1024
@@ -102,7 +104,7 @@ class MultiFileUploadSerializer(serializers.Serializer):
         for file in files:
             if file.size > max_size:
                 raise serializers.ValidationError(
-                    f'Файл {file.name} не должен превышать 10 МБ.'
+                    f'Файл {file.name} не должен превышать 50 МБ.'
                 )
             ext = os.path.splitext(file.name)[1].lower()
             if ext not in allowed_extensions:
