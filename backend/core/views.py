@@ -20,6 +20,8 @@ from django.utils.dateparse import parse_date
 from .sevices import get_file_information, create_in_memory_uploaded_file
 from .excel.pipeline import ProcessingPipeline
 from .excel.registry import get_processor, PROCESSORS
+from .task import process_single_file_task
+from celery.result import AsyncResult
 
 import base64
 
@@ -301,6 +303,57 @@ def api_upload_multiple_files(request):
         'message': 'Файлы успешно обработаны',
         'processed_files': processed_files,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def api_processing_files_using_celery(request):
+    files_list = request.FILES.getlist('files')
+    if not files_list:
+        return Response({
+            'success': False,
+            'error': {'files': 'Файлы не выбраны'},
+        }, status=status.HTTP_400_BAD_REQUEST)
+    processing_type = get_processor(request.data.get('processing_type'))
+    task_result = []
+    for file in files_list:
+        _, file_bytes = create_in_memory_uploaded_file(file)
+        file_bytes_b64 = base64.b64encode(file_bytes).decode('utf-8')
+        task = process_single_file_task.delay(file_bytes_b64, file.name, processing_type)
+        task_result.append({'filename': file.name, 'task_id': task.id})
+    return Response({
+        'success': True,
+        'message': 'Файлы успешно обработаны',
+        'tasks': task_result
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def api_get_task_result(request, task_id):
+    task = AsyncResult(task_id, app=process_single_file_task.app)
+
+    if task.status == 'PENDING':
+        response = {
+            'state': task.state,
+            'status': 'Ожидание обработки'
+        }
+        return Response(response, status=status.HTTP_202_ACCEPTED)
+
+    elif task.state == 'SUCCESS':
+        result = task.result
+        response = {
+            'state': task.state,
+            'success': result['success'],
+            'meta': result['meta'],
+            'file_content': result['file_content']
+        }
+        return Response(response, status=status.HTTP_200_OK)
+    elif task.state == 'FAILURE':
+        response = {
+            'state': task.state,
+            'error': str(task.info)
+        }
+        return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
