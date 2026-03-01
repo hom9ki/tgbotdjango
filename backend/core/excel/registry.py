@@ -9,7 +9,7 @@ PROCESSORS = {
 }
 
 
-def get_processor(processor_type):
+def get_processor(processor_type: str):
     processor = PROCESSORS.get(processor_type)
     if not processor:
         raise ValueError(f'Неизвестный тип процессора: {processor_type}')

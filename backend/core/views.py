@@ -22,6 +22,7 @@ from .excel.pipeline import ProcessingPipeline
 from .excel.registry import get_processor, PROCESSORS
 from .task import process_single_file_task
 from celery.result import AsyncResult
+from .utils.logging import logger
 
 import base64
 
@@ -73,7 +74,7 @@ def api_file_save(request):
 @parser_classes([MultiPartParser, FormParser])
 def api_upload_file_return_original(request):
     upload_files = request.FILES.getlist('files')
-    print(f'Обработка файлов: {upload_files}')
+    logger.info(f'Обработка файлов: {upload_files}')
     if not upload_files:
         return Response({
             'success': False,
@@ -308,13 +309,14 @@ def api_upload_multiple_files(request):
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def api_processing_files_using_celery(request):
+    logger.info(f'Запрос на обработку файлов: {request.data}')
     files_list = request.FILES.getlist('files')
     if not files_list:
         return Response({
             'success': False,
             'error': {'files': 'Файлы не выбраны'},
         }, status=status.HTTP_400_BAD_REQUEST)
-    processing_type = get_processor(request.data.get('processing_type'))
+    processing_type = request.data.get('processing_type')
     task_result = []
     for file in files_list:
         _, file_bytes = create_in_memory_uploaded_file(file)
@@ -359,7 +361,7 @@ def api_get_task_result(request, task_id):
 @api_view(['GET'])
 def api_get_form(request, form_type='single'):
     """Получение формы для загрузки"""
-    print(f'Тип формы: {form_type}')
+    logger.info(f'Тип формы: {form_type}')
     try:
         file_types = UploadedFile.types
         processing_types = PROCESSORS.keys()

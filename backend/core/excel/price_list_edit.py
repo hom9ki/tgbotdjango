@@ -127,16 +127,18 @@ class PriceListEdit:
         file_name = self.__edit_name()
         print(file_name)
         if file_name not in self.__PRICE_SETTINGS:
-            print(f'Неизвестный файл {file_name}')
-            self.__stream = None
+            raise ValueError(f'Неизвестный файл {file_name}')
+            # self.__stream = None
+
         df = self.__read_file_data()
         headers = df.columns.tolist()
-        print(f'Заголовки файла: {df.columns.tolist()}, {[str(col) for col in headers]}')
+        #print(f'Заголовки файла: {df.columns.tolist()}, {[str(col) for col in headers]}')
+
         if len([col for col in headers if 'Unnamed' not in str(col)]) < 3:
             for i, row in df[:10].iterrows():
-                print(f'Значения в строке {i}:{row.tolist()}')
+                # print(f'Значения в строке {i}:{row.tolist()}')
                 row_values = row.tolist()
-                print(type(row_values))
+                # print(type(row_values))
                 if len([col for col in row_values if pd.isna(col) != True]) < 3:
                     print(f'Файл {self.__file_name} содержит не нужные столбцы {row}, в строке {i}, '
                           f'количество {len(['nan' == str(col).lower() for col in row_values])}')

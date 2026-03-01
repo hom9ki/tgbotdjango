@@ -2,7 +2,7 @@
     <h4 class="mb-3">
         <i class="bi bi-files me-2"></i>Загрузка нескольких файлов
     </h4>
-    <form id="multiUploadForm" class="ajax-form" data-action="{% url 'api_upload_multiple' %}">
-    {% include 'core/multi_form_fields.html' %}
+    <form id="multiUploadForm" class="ajax-form" data-action="{% url 'api_processing_files_using_celery' %}">
+        {% include 'core/multi_form_fields.html' %}
     </form>
 </div>

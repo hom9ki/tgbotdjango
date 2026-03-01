@@ -7,9 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Назначаем обработчики событий
     setupEventListeners();
 
-    // Загружаем список файлов при открытии страницы
-//    loadStats();
-//    loadFilesList();
 });
 
 // Настройка всех обработчиков событий
@@ -27,19 +24,12 @@ function setupEventListeners() {
         loadForm('goodsmove');
     });
 
-    document.getElementById('refreshFilesBtn')?.addEventListener('click', function() {
-        loadFilesList();
-    });
 
     // Кнопка загрузки первого файла
     document.getElementById('loadFirstFileBtn')?.addEventListener('click', function() {
         loadForm('single');
     });
 
-    // Вторая кнопка обновления
-    document.getElementById('refreshFilesBtn2')?.addEventListener('click', function() {
-        loadFilesList();
-    });
 
     document.getElementById('saveFileArchiveBtn')?.addEventListener('click', function() {
         loadForm('save')
@@ -209,16 +199,17 @@ function setupMultiForm(form) {
     // Обработчик отправки формы
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        handleFormSubmit(this, 'multiple');
+//        handleFormSubmit(this, 'multiple');
+        handleMultiFormSubmit(e, this, 'multiple');
     });
 
     // Кнопка переключения на одиночную загрузку
-    const switchToSingleBtn = form.querySelector('[onclick*="switchToSingleForm"]');
-    if (switchToSingleBtn) {
-        switchToSingleBtn.onclick = function() {
-            loadForm('single');
-        };
-    }
+//    const switchToSingleBtn = form.querySelector('[onclick*="switchToSingleForm"]');
+//    if (switchToSingleBtn) {
+//        switchToSingleBtn.onclick = function() {
+//            loadForm('single');
+//        };
+//    }
 }
 
 // Настройка формы для нескольких файлов
@@ -362,8 +353,6 @@ async function handleFormSubmit(form, type) {
             }
             // Обновляем список файлов и статистику
             setTimeout(() => {
-                loadFilesList();
-                loadStats();
 
                 // Сбрасываем форму
                 form.reset();
@@ -399,21 +388,137 @@ async function handleFormSubmit(form, type) {
 }
 
 
+// Обработка задач Celery
+async function checkTaskStatus(taskId){
+    const response = await fetch(`/api/task/${taskId}/result/`);
+    return await response.json();
+}
 
-// Загрузка статистики
-async function loadStats() {
-    try {
-        const response = await fetch('/api/stats/');
-        const data = await response.json();
+async function waitForTask(taskId) {
+    while (true) {
+        const status = await checkTaskStatus(taskId);
 
-        if (data.success) {
-            document.getElementById('totalFiles').textContent = data.stats.total_files;
-            document.getElementById('totalSize').textContent = data.stats.total_size_readable;
+        if (status.state === 'SUCCESS') {
+            return status.result;
+        } else if (status.state == 'FAILURE') {
+            showError(status.error || 'Ошибка выполнения задачи')
+        } else if (status.state === 'PENDING') {
+            showSuccess('Задача выполняется...', status.status)
         }
-    } catch (error) {
-        console.error('Error loading stats:', error);
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
+
+async function handleMultiFormSubmit(e,form, type) {
+    e.preventDefault();
+
+    if (isUploading) {
+        showError('Загрузка уже выполняется');
+        return;
+    }
+
+    // Показываем прогресс
+    showProgress(true);
+
+    const formData = new FormData(form);
+    const fileInput = form.querySelector('#multiFileInput'); // Исправлено: правильный ID
+    const files = fileInput.files;
+
+    let totalSize = 0;
+    for (let file of files) {
+        totalSize += file.size;
+    }
+    if (totalSize > 100 * 1024 * 1024) {  // 100 МБ
+        showError('Общий размер файлов превышает 100 МБ');
+        return;
+    }
+    console.log('Размер файлов:', totalSize, 'байт')
+
+    if (files.length === 0) {
+        showError('Выберите файлы для загрузки');
+        return;
+    }
+    for (let file of files) {
+        formData.append('files', file);
+    }
+    try{
+        // Получаем CSRF токен
+        const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfInput ? csrfInput.value : getCSRFToken();
+        console.log('Запрос на сервер:', form.dataset.action)
+        const response = await fetch(form.dataset.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken,
+            }
+        });
+
+        const uploadData = await response.json()
+
+        if (!uploadData.success){
+            throw new Error(uploadData.error || 'Ошибка загрузки файлов');
+            }
+        const tasks = uploadData.tasks;
+
+        const result = await Promise.all(
+            tasks.map(async ({filename, task_id}) => {
+            try{
+                const result = await waitForTask(task_id);
+                return { success: true, filename, ...result };
+            } catch (error){
+                return { success: false, filename, error: error.message };
+                }
+            })
+            );
+        const successful = result.filter(r => r.success);
+        const failed = result.filter(r => !r.success);
+
+        if (failed.length > 0) {
+            showError(`Не удалось обработать ${failed.length} файл(ов): ` +
+                failed.map(f => f.filename).join(', ')
+                );
+        }
+
+        // Скачиваем успешные файлы
+        successful.forEach(result => {
+            console.log('Info: ', result)
+            // Проверка base64
+            if (!result.file_content) {
+                throw new Error('file_content отсутствует');
+                showError('Ошибка: ' + error.message);
+            } else if (typeof result.file_content !== 'string') {
+                throw new Error('file_content не строка');
+                showError('Ошибка: ' + error.message);
+            }
+
+            const byteChars = atob(result.file_content);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = result.filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
+
+        showSuccess(`Обработано: ${successful.length}, Ошибок: ${failed.length}`);
+        const selectedFilesList = document.getElementById('selectedFilesList');
+        if (selectedFilesList) selectedFilesList.style.display = 'none';
+
+    } catch (error) {
+        showError('Ошибка: ' + error.message);
+    }finally {
+        isUploading = false;
+        showProgress(false);
+    }
+};
 
 
 
