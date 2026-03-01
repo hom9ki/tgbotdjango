@@ -390,20 +390,30 @@ async function handleFormSubmit(form, type) {
 
 // Обработка задач Celery
 async function checkTaskStatus(taskId){
+    console.log('Проверка статуса задачи:', taskId);
     const response = await fetch(`/api/task/${taskId}/result/`);
-    return await response.json();
+    const responseJson = await response.json();
+    console.log('Статус задачи:', responseJson);
+    return responseJson;
 }
 
 async function waitForTask(taskId) {
+    console.log('Ожидание завершения задачи:', taskId);
     while (true) {
         const status = await checkTaskStatus(taskId);
-
         if (status.state === 'SUCCESS') {
-            return status.result;
+            console.log('Задача завершена:', status.meta);
+            return {
+                success: status.success,
+                filename: status.meta?.filename || 'unknown.xlsx',
+                file_content: status.file_content, // ← напрямую из ответа
+                ...(status.meta || {}) // ← подстраховка: если что-то есть в meta
+            };
         } else if (status.state == 'FAILURE') {
-            showError(status.error || 'Ошибка выполнения задачи')
+            throw new Error(status.error || 'Ошибка выполнения задачи')
+            console.log('Ошибка выполнения задачи:', status.error);
         } else if (status.state === 'PENDING') {
-            showSuccess('Задача выполняется...', status.status)
+            showSuccess('Обработка файла выполняется...')
         }
 
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -429,8 +439,8 @@ async function handleMultiFormSubmit(e,form, type) {
     for (let file of files) {
         totalSize += file.size;
     }
-    if (totalSize > 100 * 1024 * 1024) {  // 100 МБ
-        showError('Общий размер файлов превышает 100 МБ');
+    if (totalSize > 200* 1024 * 1024) {  // 200 МБ
+        showError('Общий размер файлов превышает 200 МБ');
         return;
     }
     console.log('Размер файлов:', totalSize, 'байт')
@@ -439,9 +449,7 @@ async function handleMultiFormSubmit(e,form, type) {
         showError('Выберите файлы для загрузки');
         return;
     }
-    for (let file of files) {
-        formData.append('files', file);
-    }
+
     try{
         // Получаем CSRF токен
         const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
@@ -456,16 +464,18 @@ async function handleMultiFormSubmit(e,form, type) {
         });
 
         const uploadData = await response.json()
-
+        console.log('Ответ сервера:', uploadData)
         if (!uploadData.success){
             throw new Error(uploadData.error || 'Ошибка загрузки файлов');
             }
         const tasks = uploadData.tasks;
+        console.log('Строка 462 tasks: ',tasks)
 
         const result = await Promise.all(
             tasks.map(async ({filename, task_id}) => {
             try{
                 const result = await waitForTask(task_id);
+                console.log('Строка 468 result: ',result)
                 return { success: true, filename, ...result };
             } catch (error){
                 return { success: false, filename, error: error.message };
@@ -484,16 +494,16 @@ async function handleMultiFormSubmit(e,form, type) {
         // Скачиваем успешные файлы
         successful.forEach(result => {
             console.log('Info: ', result)
+
+            const { filename, file_content } = result;
+
             // Проверка base64
-            if (!result.file_content) {
-                throw new Error('file_content отсутствует');
-                showError('Ошибка: ' + error.message);
-            } else if (typeof result.file_content !== 'string') {
-                throw new Error('file_content не строка');
-                showError('Ошибка: ' + error.message);
+            if (!file_content) {
+                showError(`Файл ${filename}: отсутствует содержимое`);
+                return;
             }
 
-            const byteChars = atob(result.file_content);
+            const byteChars = atob(file_content);
             const byteNumbers = new Array(byteChars.length);
             for (let i = 0; i < byteChars.length; i++) {
                 byteNumbers[i] = byteChars.charCodeAt(i);
@@ -503,7 +513,7 @@ async function handleMultiFormSubmit(e,form, type) {
 
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = result.filename;
+            link.download = filename;
             link.click();
             URL.revokeObjectURL(link.href);
         });
