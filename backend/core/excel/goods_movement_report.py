@@ -61,9 +61,11 @@ class GoodsMovementReport:
 
         if mult != 1 and amout:
             remainder = amout % mult
-            if remainder != 0:
+            if remainder != 0 and amout > mult:
                 print(f'Остаток не кратен кратности, остаток {remainder}')
                 row['К перемещению К'] = amout - remainder
+            elif remainder != 0 and amout < mult:
+                row['К перемещению К'] = mult
 
     def stock_check(self, row: dict) -> None:
         """Проверка остатка"""
