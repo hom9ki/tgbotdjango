@@ -9,6 +9,9 @@ def normalize_text(text):
     return str(text).lower().strip() if text else ''
 
 
+def find_kit(product: str) -> bool:
+    return any(kw in product for kw in ['комплект', 'набор', 'упаковка'])
+
 def miltiplicity_processing_excel(file_bytes):
     input_stream = io.BytesIO(file_bytes)
     workbook = load_workbook(input_stream, data_only=True)
@@ -29,7 +32,7 @@ def miltiplicity_processing_excel(file_bytes):
         product = normalize_text(record.get('Наименование', ''))
         number = normalize_text(record.get('Номер по каталогу', ''))
 
-        has_kit = any(kw in product for kw in ['комплект', 'набор', 'упаковка'])
+        has_kit = find_kit(product)
 
         record['Кратность'] = 1
 
@@ -43,7 +46,7 @@ def miltiplicity_processing_excel(file_bytes):
             continue
 
         for group, keywords in key_words.items():
-            if any(word in product for word in keywords):
+            if any(word in product for word in keywords) or any(word == product for word in keywords):
                 anti_key = anti_key_words.get(group, [])
                 normalized_words = product.replace('(', '').replace(')', '').split(' ')
                 if anti_key and any(word in normalized_words for word in anti_key):

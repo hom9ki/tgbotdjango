@@ -4,6 +4,7 @@ from io import BytesIO
 import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from .settings import UNNECESSARY_BRANDS
 
 ['Кратность', 'Кратность продажи', 'Остаток отпр', 'Дост Ост Отпр', 'Кол-во к перем.', 'К перемещению К']
 
@@ -23,6 +24,12 @@ class GoodsMovementReport:
         """Получение имени файла"""
         return self.file_name
 
+    def unnecessary_brand_del(self, row: dict) -> None:
+        brand = row.get('Производитель', '').lower()
+        if brand in UNNECESSARY_BRANDS:
+            print(f'Бренд {brand} не нужен')
+            row['К перемещению К'] = ''
+
     def openpyxl_open_file(self, stream: io.BytesIO):
         """Открытие файла с помощью openpyxl для сохранения в тот же файл"""
         wb = load_workbook(stream)
@@ -39,7 +46,6 @@ class GoodsMovementReport:
         """Обновление файла"""
         headers_index = self.get_headers_index(df)
         for row_num, value_row in data.items():
-            print(f'Строка {row_num}, значение {value_row}')
             cell = worksheet.cell(row=row_num, column=headers_index)
             cell.value = value_row
 
@@ -89,6 +95,7 @@ class GoodsMovementReport:
                 self.adding_the_amount_of_movement(row)
                 self.multiplicity_check(row)
                 self.stock_check(row)
+                self.unnecessary_brand_del(row)
             update_rows[i] = row['К перемещению К']
 
         return update_rows
