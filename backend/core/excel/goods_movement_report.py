@@ -6,8 +6,6 @@ from openpyxl import load_workbook, Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from .settings import UNNECESSARY_BRANDS
 
-['Кратность', 'Кратность продажи', 'Остаток отпр', 'Дост Ост Отпр', 'Кол-во к перем.', 'К перемещению К']
-
 
 class GoodsMovementReport:
     def __init__(self, file_bytes: bytes, file_name: str):
@@ -37,6 +35,7 @@ class GoodsMovementReport:
         return wb, ws
 
     def openpyxl_save_file(self, workbook: Workbook):
+        """Создание потока и сохранение файла с помощью openpyxl."""
         output_stream = io.BytesIO()
         workbook.save(output_stream)
         output_stream.seek(0)

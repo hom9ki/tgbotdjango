@@ -199,17 +199,8 @@ function setupMultiForm(form) {
     // Обработчик отправки формы
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-//        handleFormSubmit(this, 'multiple');
         handleMultiFormSubmit(e, this, 'multiple');
     });
-
-    // Кнопка переключения на одиночную загрузку
-//    const switchToSingleBtn = form.querySelector('[onclick*="switchToSingleForm"]');
-//    if (switchToSingleBtn) {
-//        switchToSingleBtn.onclick = function() {
-//            loadForm('single');
-//        };
-//    }
 }
 
 // Настройка формы для нескольких файлов

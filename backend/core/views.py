@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, reverse, get_object_or_404
 from .models import UploadedFile
 from .serializers import UploadedFileSerializer, FileUploadSerializer, MultiFileUploadSerializer
 from rest_framework.decorators import api_view, parser_classes, authentication_classes, permission_classes
@@ -359,36 +359,47 @@ def api_get_task_result(request, task_id):
 
 
 @api_view(['GET'])
-def api_get_form(request, form_type='single'):
+def api_get_form(request, form_type):
     """Получение формы для загрузки"""
-    logger.info(f'Тип формы: {form_type}')
+
+    urls_types = {
+        'multiplicity': 'Определение кратности',
+        'price': 'Обработка прайс-листов',
+        'goodsmove': 'Оптимизация ежедневных перемещений товаров'
+    }
+
+    upload_type = urls_types.get(form_type)
+    logger.info(f'Тип формы обработки: {upload_type}')
+    upload_url = None
+    file_types = UploadedFile.types
+    logger.info(f'Типы файлов: {file_types}')
     try:
-        file_types = UploadedFile.types
-        processing_types = PROCESSORS.keys()
-        if form_type == 'multiple':
-            template = 'core/price_form_container.html'
-        elif form_type == 'single':
-            template = 'core/multiplicity_form_container.html'
-        elif form_type == 'goodsmove':
-            template = 'core/goodsmove_form_container.html'
+        if upload_type:
+            upload_url = reverse('api_upload', args=[form_type])
+            logger.info(f'URL: {upload_url}')
+            template = 'core/form_container.html'
         else:
             template = 'core/saved_form.html'
 
-        form_html = render_to_string(template, {
+        context = {
             'csrf_token': request.META.get('CSRF_COOKIE'),
             'form_type': form_type,
             'file_types': file_types,
-            'processing_types': processing_types,
-        }, request=request)
+            'upload_url': upload_url
+        }
+        try:
+            form_html = render_to_string(template, context, request=request)
+            logger.info('Шаблон сформирован')
+            return Response({
+                'success': True,
+                'form_html': form_html,
+                'upload_url': upload_url,
+                'title_form': upload_type
 
-        return Response({
-            'success': True,
-            'form_html': form_html,
-            'form_type': form_type,
-            'file_types': file_types,
-            'processing_types': processing_types
-
-        }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK)
+        except Exception as template_error:
+            logger.error(f'Ошибка рендеринга шаблона: {template_error}', exc_info=True)
+            raise
     except Exception as e:
         return Response({
             'success': False,
@@ -497,3 +508,7 @@ def api_download_file(request, file_id):
                  'download_url': download_url,
                  }
     }, status=status.HTTP_200_OK)
+
+
+def api_upload_file(request, upload_type):
+    ...
