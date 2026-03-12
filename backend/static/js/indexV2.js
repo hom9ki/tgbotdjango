@@ -53,6 +53,8 @@ async function loadForm(formType) {
             formContainer.innerHTML = data.form_html;
             const inputTitle = document.getElementById('typeForm')
             inputTitle.innerText = data.title_form;
+
+            setupFormHandlers();
         } else {
             showError('Ошибка загрузки формы:', data.error)
         }
@@ -74,7 +76,7 @@ function setupFormHandlers(){
                 selectedFilesList.style.display = 'block';
                 filesPreview.innerHTML = '';
 
-                Array.form(this.files).forEach((file, index) => {
+                Array.from(this.files).forEach((file, index) => {
                     const size = formatFileSize(file.size);
                     filesPreview.innerHTML += `
                         <div class="list-group-item py-2">
@@ -87,24 +89,91 @@ function setupFormHandlers(){
                             </div>
                         </div>
                     `;
-                })
+                });
             } else {
                 selectedFilesList.style.display = 'none';
             }
         });
     }
 
-    form.addEventListener('submit', function(event) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
         handleFormSubmit(this)
     });
 }
 
+async function handleFormSubmit(form) {
+
+    const formData = new FormData(form);
+    console.log('Отправляем данные формы:', Object.fromEntries(formData.entries()));
+    const submitBtn = form.querySelector('#submitBtn');
+    const statusDiv = form.querySelector('#uploadStatus');
+
+    const csrfToken = getCSRFToken()
+    console.log('CSRF token:', csrfToken)
+    const url = form.dataset.action
+    console.log('URL:', url)
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken,
+            }
+        });
+
+        const data = await response.json();
+        console.log('Ответ сервера:', data);
+
+        if (data.success) {
+            showSuccess('Файлы успешно загружены');
+            form.reset();
+            document.getElementById('selectedFilesList').style.display = 'none';
+        } else {
+            showError('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        // Восстанавливаем кнопку
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-upload me-2"></i>Загрузить файлы';
+        }
+    }
+}
+
+function showSuccess(message) {
+    const template = document.getElementById('successAlertTemplate');
+    const clone = template.content.cloneNode(true);
+    const alert = clone.querySelector('.alert');
+    alert.querySelector('.message').textContent = message;
+
+    document.body.appendChild(clone);
+
+    setTimeout(() => {
+        const alertElement = document.querySelector('.alert-success');
+        if (alertElement) {
+            const bsAlert = new bootstrap.Alert(alertElement);
+            bsAlert.close();
+        }
+    }, 5000);
+}
 
 
 
-function showError(message){
-    const errorContainer = new bootstrap.Modal(document.gertElementById('errorModal'));
-    document.getElementById('errorModalLabel').textContent = message;
-    errorModal.show();
+
+function showError(message) {
+    const errorModalElement = document.getElementById('errorModal');
+    const modal = new bootstrap.Modal(errorModalElement);
+    document.getElementById('errorModalBody').textContent = message;
+    modal.show();
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
