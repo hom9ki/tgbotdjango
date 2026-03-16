@@ -6,7 +6,6 @@ class ProcessingPipeline:
         self.file_processor = file_processor
 
     def run(self, file_bytes: bytes, file_name: str) -> tuple:
-
         current_bytes = file_bytes
         current_filename = file_name
 

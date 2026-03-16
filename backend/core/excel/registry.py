@@ -3,9 +3,9 @@ from .price_list_processor import PriceListProcessor
 from .goods_movement_processor import GoodsMovementProcessor
 
 PROCESSORS = {
-    'price_list': PriceListProcessor(),
+    'price': PriceListProcessor(),
     'multiplicity': MultiplicityProcessor(),
-    'goods_movement': GoodsMovementProcessor()
+    'goodsmove': GoodsMovementProcessor()
 }
 
 

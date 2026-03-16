@@ -104,6 +104,8 @@ function setupFormHandlers(){
 
 async function handleFormSubmit(form) {
 
+    showProgress(true);
+
     const formData = new FormData(form);
     console.log('Отправляем данные формы:', Object.fromEntries(formData.entries()));
     const submitBtn = form.querySelector('#submitBtn');
@@ -122,27 +124,104 @@ async function handleFormSubmit(form) {
             }
         });
 
-        const data = await response.json();
-        console.log('Ответ сервера:', data);
+        const uploadData = await response.json()
+        console.log('Ответ сервера:', uploadData)
+        if (!uploadData.success){
+            throw new Error(uploadData.error || 'Ошибка загрузки файлов');
+            }
+        const tasks = uploadData.tasks;
 
-        if (data.success) {
-            showSuccess('Файлы успешно загружены');
-            form.reset();
-            document.getElementById('selectedFilesList').style.display = 'none';
-        } else {
-            showError('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+        const result = await Promise.all(
+            tasks.map(async ({filename, task_id}) => {
+            try{
+                const result = await waitForTask(task_id);
+                return { success: true, filename, ...result };
+            } catch (error){
+                return { success: false, filename, error: error.message };
+                }
+            })
+            );
+        const successful = result.filter(r => r.success);
+        const failed = result.filter(r => !r.success);
+
+        if (failed.length > 0) {
+            showError(`Не удалось обработать ${failed.length} файл(ов): ` +
+                failed.map(f => f.filename).join(', ')
+                );
         }
+
+        // Скачиваем успешные файлы
+        successful.forEach(result => {
+            console.log('Info: ', result)
+
+            const { filename, file_content } = result;
+
+            // Проверка base64
+            if (!file_content) {
+                showError(`Файл ${filename}: отсутствует содержимое`);
+                return;
+            }
+
+            const byteChars = atob(file_content);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
+
+        showSuccess(`Обработано: ${successful.length}, Ошибок: ${failed.length}`);
+        const selectedFilesList = document.getElementById('selectedFilesList');
+        if (selectedFilesList) selectedFilesList.style.display = 'none';
+
     } catch (error) {
-        showError('Ошибка сети: ' + error.message);
-    } finally {
-        // Восстанавливаем кнопку
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-upload me-2"></i>Загрузить файлы';
-        }
+        showError('Ошибка: ' + error.message);
+    }finally {
+        isUploading = false;
+        showProgress(false);
     }
 }
 
+// Обработка задач Celery
+async function checkTaskStatus(taskId){
+    console.log('Проверка статуса задачи:', taskId);
+    const response = await fetch(`/api/task/${taskId}/result/`);
+    const responseJson = await response.json();
+    console.log('Статус задачи:', responseJson);
+    return responseJson;
+}
+
+async function waitForTask(taskId) {
+    console.log('Ожидание завершения задачи:', taskId);
+    while (true) {
+        const status = await checkTaskStatus(taskId);
+        if (status.state === 'SUCCESS') {
+            console.log('Задача завершена:', status.meta);
+            return {
+                success: status.success,
+                filename: status.meta?.filename || 'unknown.xlsx',
+                file_content: status.file_content, // ← напрямую из ответа
+                ...(status.meta || {}) // ← подстраховка: если что-то есть в meta
+            };
+        } else if (status.state == 'FAILURE') {
+            throw new Error(status.error || 'Ошибка выполнения задачи')
+            console.log('Ошибка выполнения задачи:', status.error);
+        } else if (status.state === 'PENDING') {
+            showSuccess('Обработка файла выполняется...')
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+}
+
+// Вспомогательные функции
 function showSuccess(message) {
     const template = document.getElementById('successAlertTemplate');
     const clone = template.content.cloneNode(true);
@@ -176,4 +255,11 @@ function formatFileSize(bytes) {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showProgress(show) {
+    const progressBar = document.getElementById('progressBar');
+    if (progressBar) {
+        progressBar.style.display = show ? 'block' : 'none';
+    }
 }
