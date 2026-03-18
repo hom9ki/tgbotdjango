@@ -5,22 +5,28 @@ import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from .settings import UNNECESSARY_BRANDS
+from .base_processing_files import BaseProcessingFiles
 
 
-class GoodsMovementReport:
+class GoodsMovementReport(BaseProcessingFiles):
     def __init__(self, file_bytes: bytes, file_name: str):
-        self.file_name = file_name
-        self.file_bytes = file_bytes
+        super().__init__(file_bytes, file_name)
+        self._processed_data = None
 
     @property
     def get_stream(self):
-        """Получение потока"""""
-        return self.read_file()
+        """Получение потока"""
+        return self._get_processed()
 
     @property
-    def get_filename(self):
+    def get_file_name(self):
         """Получение имени файла"""
         return self.file_name
+
+    def _get_processed(self):
+        if self._processed_data is None:
+            self._processed_data = self.process()
+        return self._processed_data
 
     def unnecessary_brand_del(self, row: dict) -> None:
         brand = row.get('Производитель', '').lower()
@@ -118,7 +124,7 @@ class GoodsMovementReport:
     def get_headers_index(df: pd.DataFrame):
         return df.columns.tolist().index('К перемещению К') + 1
 
-    def read_file(self) -> bytes:
+    def process(self) -> bytes:
         """Чтение файла"""
         input_stream = io.BytesIO(self.file_bytes)
         df = self.pandas_open_file(input_stream)

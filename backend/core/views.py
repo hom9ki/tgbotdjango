@@ -65,6 +65,31 @@ def api_file_save(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def api_upload_file(request, upload_type):
+    """API для загрузки файла или списка файлов с использованием Celery"""
+    logger.info(f'Запрос на обработку файлов: {request.data}')
+    logger.info(f'Тип обработки: {upload_type}')
+    files_list = request.FILES.getlist('files')
+    if not files_list:
+        return Response({
+            'success': False,
+            'error': {'files': 'Файлы не выбраны'},
+        }, status=status.HTTP_400_BAD_REQUEST)
+    task_result = []
+    for file in files_list:
+        _, file_bytes = create_in_memory_uploaded_file(file)
+        file_bytes_b64 = base64.b64encode(file_bytes).decode('utf-8')
+        task = process_single_file_task.delay(file_bytes_b64, file.name, upload_type)
+        task_result.append({'filename': file.name, 'task_id': task.id})
+    return Response({
+        'success': True,
+        'message': 'Файлы успешно обработаны',
+        'tasks': task_result
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['GET'])
 def api_get_task_result(request, task_id):
     """Получение результата задачи"""
@@ -253,29 +278,4 @@ def api_download_file(request, file_id):
         'file': {'name': uploaded_file.filename,
                  'download_url': download_url,
                  }
-    }, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def api_upload_file(request, upload_type):
-    """API для загрузки файла или списка файлов с использованием Celery"""
-    logger.info(f'Запрос на обработку файлов: {request.data}')
-    logger.info(f'Тип обработки: {upload_type}')
-    files_list = request.FILES.getlist('files')
-    if not files_list:
-        return Response({
-            'success': False,
-            'error': {'files': 'Файлы не выбраны'},
-        }, status=status.HTTP_400_BAD_REQUEST)
-    task_result = []
-    for file in files_list:
-        _, file_bytes = create_in_memory_uploaded_file(file)
-        file_bytes_b64 = base64.b64encode(file_bytes).decode('utf-8')
-        task = process_single_file_task.delay(file_bytes_b64, file.name, upload_type)
-        task_result.append({'filename': file.name, 'task_id': task.id})
-    return Response({
-        'success': True,
-        'message': 'Файлы успешно обработаны',
-        'tasks': task_result
     }, status=status.HTTP_200_OK)

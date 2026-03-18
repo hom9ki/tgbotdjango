@@ -4,19 +4,23 @@ import pandas as pd
 from pathlib import Path
 from .settings import PRICE_SETTINGS, PRICE_NAMES, QUANTITY_KEYS
 from .ple_v2 import SmartColumnDetector
+from .base_processing_files import BaseProcessingFiles
 
 
-class PriceListEdit:
+class PriceListEdit(BaseProcessingFiles):
     __PRICE_SETTINGS = PRICE_SETTINGS
     __PRICE_NAMES = PRICE_NAMES
     __ENCODINGS = ['utf-8', 'cp1251', 'windows-1251', 'iso-8859-1', 'latin1']
     __QUANTITY_KEYS = QUANTITY_KEYS
 
     def __init__(self, file_bytes: bytes, file_name: str):
-        self.__file_bytes = file_bytes
-        self.__file_name = file_name
-        self.__extension = Path(file_name).suffix
-        self.__base_name = Path(file_name).stem
+        super().__init__(file_bytes, file_name)
+        self._processed_data = None
+        self.__setup()
+
+    def __setup(self):
+        self.__extension = Path(self.file_name).suffix
+        self.__base_name = Path(self.file_name).stem
         self.__columns = self.__PRICE_SETTINGS.get(self.__edit_name(), [])
         self.__required_columns = [col for col in self.__columns.keys()]
         self.__max_count_col = max(self.__columns.values())
@@ -24,11 +28,14 @@ class PriceListEdit:
         self.__stream = None
         self.processor_header = SmartColumnDetector()
 
+    def _get_processed(self):
+        if self._processed_data is None:
+            self._processed_data = self.process()
+        return self._processed_data
+
     @property
     def get_stream(self):
-        if self.__stream is None:
-            self.__read_file()
-        return self.__stream
+        return self._get_processed()
 
     @property
     def get_file_name(self):
@@ -43,7 +50,7 @@ class PriceListEdit:
             print(f'key: {key}, value: {value}')
             print(all(word in words_file_name for word in value))
             if all(word in words_file_name for word in value):
-                print(f'Имя файла {self.__file_name} изменено на {key}')
+                print(f'Имя файла {self.file_name} изменено на {key}')
                 return key
         else:
             return self.__base_name
@@ -51,22 +58,22 @@ class PriceListEdit:
     def __read_xlsx_xls(self):
         try:
             engine = 'openpyxl' if self.__extension == '.xlsx' else 'xlrd'
-            df = pd.read_excel(io.BytesIO(self.__file_bytes), engine=engine)
+            df = pd.read_excel(io.BytesIO(self.file_bytes), engine=engine)
             return df
         except Exception as e:
-            print(f'Ошибка при чтении файла {self.__file_name}: {e}')
+            print(f'Ошибка при чтении файла {self.file_name}: {e}')
             raise
 
     def __read_csv(self):
         for encoding in self.__ENCODINGS:
             try:
-                df = pd.read_csv(io.BytesIO(self.__file_bytes), encoding=encoding, delimiter=';', low_memory=False)
+                df = pd.read_csv(io.BytesIO(self.file_bytes), encoding=encoding, delimiter=';', low_memory=False)
                 return df
             except UnicodeDecodeError:
                 continue
-            except Exception as e:
+            except Exception:
                 continue
-        raise ValueError(f'Не удалось прочитать файл {self.__file_name}')
+        raise ValueError(f'Не удалось прочитать файл {self.file_name}')
 
     def __read_file_data(self):
         if self.__extension in ['.xls', '.xlsx']:
@@ -74,7 +81,7 @@ class PriceListEdit:
         elif self.__extension == '.csv':
             return self.__read_csv()
         else:
-            raise ValueError(f'Неизвестный формат файла {self.__file_name}')
+            raise ValueError(f'Неизвестный формат файла {self.file_name}')
 
     def __get_header_names(self):
         headrs_names = {}
@@ -122,7 +129,7 @@ class PriceListEdit:
         print(f'rows: {rows[:10]}')
         self.__data = rows
 
-    def __read_file(self):
+    def process(self):
         new_df = None
         file_name = self.__edit_name()
         print(file_name)
@@ -140,7 +147,7 @@ class PriceListEdit:
                 row_values = row.tolist()
                 # print(type(row_values))
                 if len([col for col in row_values if pd.isna(col) != True]) < 3:
-                    print(f'Файл {self.__file_name} содержит не нужные столбцы {row}, в строке {i}, '
+                    print(f'Файл {self.file_name} содержит не нужные столбцы {row}, в строке {i}, '
                           f'количество {len(['nan' == str(col).lower() for col in row_values])}')
                 else:
                     df = df.iloc[i:]
@@ -153,7 +160,7 @@ class PriceListEdit:
             df = self.processor_header.analyze_df(df)
             new_df = self.__create_dataframe(df)
         elif len(missing_columns) == 1 and missing_columns[0] in self.__QUANTITY_KEYS:
-            print(f'В прайсе {self.__file_name} не найден столбец с количество товара {missing_columns[0]}')
+            print(f'В прайсе {self.file_name} не найден столбец с количество товара {missing_columns[0]}')
             df[missing_columns[0]] = 1
             print(df.head())
             new_df = self.__create_dataframe(df)
@@ -168,7 +175,7 @@ class PriceListEdit:
                     col_position[col] = i + 1
 
             if col_position == self.__columns:
-                print(f'Столбцы в файле {self.__file_name} в правильном порядке')
+                print(f'Столбцы в файле {self.file_name} в правильном порядке')
                 new_df = df
             else:
                 new_df = self.__create_dataframe(df)
@@ -177,7 +184,7 @@ class PriceListEdit:
         with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
             new_df.to_excel(writer, index=False, sheet_name='Лист1')
         output_stream.seek(0)
-        self.__stream = output_stream.read()
+        return output_stream.read()
 
     def __create_dataframe(self, df):
         self.__create_data(df)
