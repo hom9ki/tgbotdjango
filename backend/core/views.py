@@ -98,7 +98,7 @@ def api_get_task_result(request, task_id):
     if task.status == 'PENDING':
         response = {
             'state': task.state,
-            'status': 'Ожидание обработки'
+            'status': 'Ожидание обработки',
         }
         return Response(response, status=status.HTTP_202_ACCEPTED)
 

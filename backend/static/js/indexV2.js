@@ -214,6 +214,7 @@ async function waitForTask(taskId) {
             throw new Error(status.error || 'Ошибка выполнения задачи')
             console.log('Ошибка выполнения задачи:', status.error);
         } else if (status.state === 'PENDING') {
+            console.log('Status: ', status)
             showSuccess('Обработка файла выполняется...')
         }
 
