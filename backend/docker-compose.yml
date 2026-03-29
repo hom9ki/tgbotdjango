@@ -72,7 +72,9 @@ services:
 
   celery:
     build: .
-    command: [ "celery", "-A", "backend", "worker", "-l", "info", "-c", "4" ]
+    command: [ "celery", "-A", "backend", "worker", "--concurrency=1", "--max-tasks-per-child=1" ]
+    mem_limit: 2g
+    cpus: '1.0'
     volumes:
       - .:/app
       - media_volume:/app/media
