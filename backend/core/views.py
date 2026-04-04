@@ -68,7 +68,7 @@ def api_file_save(request):
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
 def api_upload_file(request, upload_type):
-    """API для загрузки файла или списка файлов с использованием Celery"""
+    """API для загрузки файла или списка файлов для обработки с помощью Celery"""
     logger.info(f'Запрос на обработку файлов: {request.data}')
     logger.info(f'Тип обработки: {upload_type}')
     files_list = request.FILES.getlist('files')
@@ -85,7 +85,7 @@ def api_upload_file(request, upload_type):
         task_result.append({'filename': file.name, 'task_id': task.id})
     return Response({
         'success': True,
-        'message': 'Файлы успешно обработаны',
+        'message': 'Обработка файлов начата',
         'tasks': task_result
     }, status=status.HTTP_200_OK)
 
