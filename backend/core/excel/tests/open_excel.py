@@ -3,7 +3,8 @@ from pathlib import Path
 from ..registry import get_processor
 from ..pipeline import ProcessingPipeline
 from ..goods_movement_report import GoodsMovementReport
-from ..multiplicity_processor import miltiplicity_processing_excel
+# from ..multiplicity_processor import miltiplicity_processing_excel
+from ..data_cleaning import open_file
 import io
 
 class MyTestCase(unittest.TestCase):
@@ -20,7 +21,7 @@ class MyTestCase(unittest.TestCase):
             # processor = ProcessingPipeline(processor_type)
             # result = processor.run(file_bytes, file.name)
             # result = GoodsMovementReport(file_bytes, file.name).get_stream
-            result = miltiplicity_processing_excel(file_bytes)
+            result = open_file(file_bytes, file.name)
             file_bytes_io = io.BytesIO(result)
             with open(CURRENT_DIR/f'{file.name}_результат.xlsx' , 'wb') as f:
                 f.write(file_bytes_io.read())

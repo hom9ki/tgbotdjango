@@ -72,7 +72,7 @@ multiplicity = {'Свечи зажигания': 4,
 
 UNNECESSARY_BRANDS = ['airline', 'akyoto', 'amd', 'arirang', 'asva', 'azumi', 'blitz', 'cadic', 'carberry', 'caready',
                       'carville racing', 'delcoparts', 'edex', 'finwhale', 'fixar', 'freez', 'goodwill', 'green filter',
-                      'haft', 'jikiu', 'luzar', 'masterkit', 'mitaco', 'mobiland', 'nsp', 'sb nagamochi', 'segmatic',
+                      'haft', 'jikiu', 'luzar', 'masterkit', 'metaco', 'mobiland', 'nsp', 'sb nagamochi', 'segmatic',
                       'sensen', 'sontian', 'startvolt', 'tatsumi', 'tixona', 'torkavto', 'torr', 'transmaster', 'trialli',
                       'tyren', 'unio', 'united motors', 'wayton', 'wolf', 'xenite']
 
