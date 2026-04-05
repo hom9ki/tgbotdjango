@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - /dev/null:/var/lib/postgresql/data/postmaster.pid  # защита от блокировок при падении
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || pg_isready -U hom9ki -d Nokia1020!"]
       interval: 10s
       timeout: 5s
       retries: 5
