@@ -75,13 +75,15 @@ class PriceListEdit(BaseProcessingFiles):
                 continue
         raise ValueError(f'Не удалось прочитать файл {self.file_name}')
 
-    def __read_file_data(self):
+    def __read_file_data(self) -> pd.DataFrame:
         if self.__extension in ['.xls', '.xlsx']:
-            return self.__read_xlsx_xls()
+            df = self.__read_xlsx_xls()
         elif self.__extension == '.csv':
-            return self.__read_csv()
+            df = self.__read_csv()
         else:
             raise ValueError(f'Неизвестный формат файла {self.file_name}')
+        self.file_bytes = None
+        return df
 
     def __get_header_names(self):
         headrs_names = {}
@@ -130,7 +132,7 @@ class PriceListEdit(BaseProcessingFiles):
         self.__data = rows
 
     def process(self):
-        new_df = None
+        # new_df = None
         file_name = self.__edit_name()
         print(file_name)
         if file_name not in self.__PRICE_SETTINGS:
@@ -139,7 +141,7 @@ class PriceListEdit(BaseProcessingFiles):
 
         df = self.__read_file_data()
         headers = df.columns.tolist()
-        #print(f'Заголовки файла: {df.columns.tolist()}, {[str(col) for col in headers]}')
+        # print(f'Заголовки файла: {df.columns.tolist()}, {[str(col) for col in headers]}')
 
         if len([col for col in headers if 'Unnamed' not in str(col)]) < 3:
             for i, row in df[:10].iterrows():
@@ -158,12 +160,12 @@ class PriceListEdit(BaseProcessingFiles):
 
         if len(missing_columns) == len(self.__required_columns):
             df = self.processor_header.analyze_df(df)
-            new_df = self.__create_dataframe(df)
+            df = self.__create_dataframe(df)
         elif len(missing_columns) == 1 and missing_columns[0] in self.__QUANTITY_KEYS:
             print(f'В прайсе {self.file_name} не найден столбец с количество товара {missing_columns[0]}')
             df[missing_columns[0]] = 1
             print(df.head())
-            new_df = self.__create_dataframe(df)
+            df = self.__create_dataframe(df)
         elif missing_columns:
             raise ValueError(f'Отсутствуют необходимые столбцы: {missing_columns}')
         elif not missing_columns:
@@ -176,17 +178,17 @@ class PriceListEdit(BaseProcessingFiles):
 
             if col_position == self.__columns:
                 print(f'Столбцы в файле {self.file_name} в правильном порядке')
-                new_df = df
+                # new_df = df
             else:
-                new_df = self.__create_dataframe(df)
+                df = self.__create_dataframe(df)
 
         output_stream = io.BytesIO()
-        with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
-            new_df.to_excel(writer, index=False, sheet_name='Лист1')
+        with pd.ExcelWriter(output_stream, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Лист1')
         output_stream.seek(0)
         return output_stream.read()
 
-    def __create_dataframe(self, df):
+    def __create_dataframe(self, df: pd.DataFrame):
         self.__create_data(df)
         new_df = pd.DataFrame(self.__data)
         column_names = self.__get_header_names()
@@ -194,6 +196,19 @@ class PriceListEdit(BaseProcessingFiles):
         new_df = new_df.rename(columns=column_names)
 
         return new_df
+
+    def __new_create_dataframe(self, df: pd.DataFrame):
+        """Дописать метод, для перехода с обработки словаря на обработку DataFrame"""
+        new_columns = [''] * max(self.__max_count_col, len(df.columns.tolist()))
+
+        for col_name, target_index in self.__columns.items():
+            if col_name in df.columns or col_name in self.__QUANTITY_KEYS:
+                new_columns[target_index - 1] = col_name
+            else:
+                new_columns[target_index - 1] = None
+
+        new_df = pd.DataFrame()
+        pass
 
     def check_file_name(self):
         pass
