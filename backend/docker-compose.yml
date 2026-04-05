@@ -9,8 +9,7 @@ services:
       - POSTGRES_DB
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
+      - /dev/null:/var/lib/postgresql/data/postmaster.pid  # защита от блокировок при падении
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
@@ -21,8 +20,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -62,8 +59,6 @@ services:
       - .:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-    ports:
-      - '8000:8000'
     depends_on:
       db:
         condition: service_healthy
@@ -90,20 +85,13 @@ services:
       - .env
     restart: unless-stopped
 
-  adminer:
-    image: adminer
-    environment:
-      ADMINER_DEFAULT_SERVER: db
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - '8080:8080'
-    restart: always
-
 
 volumes:
   media_volume:
+    driver: local
   static_volume:
+    driver: local
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
