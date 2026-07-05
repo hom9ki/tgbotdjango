@@ -3,8 +3,8 @@ import math
 import pandas as pd
 import io
 
-mounts_name = ['июнь 25', 'июль 25', 'авг. 25', 'сент. 25', 'окт. 25', 'нояб. 25', 'дек. 25', 'янв. 26', 'февр. 26',
-               'март 26', 'апр. 26', 'май 26', 'июнь 26']
+mounts_name = ['июль 25', 'авг. 25', 'сент. 25', 'окт. 25', 'нояб. 25', 'дек. 25', 'янв. 26', 'февр. 26',
+               'март 26', 'апр. 26', 'май 26', 'июнь 26', 'июль 26']
 
 DEEP = {
     'A': 2,
@@ -113,7 +113,7 @@ def distribute_goods(sender_df, recipient_df):
     result_df['Излишки'] = total_surplus
     result_df['покрыто'] = False
     result_df['остаток_потребности'] = result_df['Потребность'].copy()
-    result_df['назначено'] = 0
+    result_df['К перемещению'] = 0
 
     remaining_surplus = total_surplus
 
@@ -124,7 +124,7 @@ def distribute_goods(sender_df, recipient_df):
         need = row['остаток_потребности']
         if need > 0:
             allocation = min(need, remaining_surplus)
-            result_df.at[index, 'назначено'] = allocation
+            result_df.at[index, 'К перемещению'] = allocation
             result_df.at[index, 'покрыто'] = allocation > 0
             result_df.at[index, 'остаток_потребности'] = need - allocation
             remaining_surplus -= allocation
