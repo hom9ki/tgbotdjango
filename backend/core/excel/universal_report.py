@@ -57,13 +57,14 @@ def calculate_sales(row, multiplicity):
         return 0
 
     max_sales = max(last_months_sales)
-    round_sales = math.ceil(((sum(sales) / len(sales)) / multiplicity))
-    avg_sales = max(max_sales, round_sales * multiplicity)
+    # round_sales = math.ceil(((sum(sales) / len(sales)) / multiplicity))
+    # avg_sales = max(max_sales, round_sales * multiplicity)
+    round_sales = math.ceil(sum(sales) / len(sales))
+    avg_sales = max(max_sales, round_sales)
     return avg_sales
 
 
 def calculate_sales_sender(row, deep=0):
-
     avg_sales = calculate_sales(row, row['Кратн.'])
     werehouse = row['Св. ост.']
     if werehouse == 0:
@@ -111,7 +112,7 @@ def distribute_goods(sender_df, recipient_df):
 
     result_df['Сред. продажа'] = result_df.apply(calculate_sales, axis=1, args=(result_df['Кратн.'].iloc[0],))
     result_df['Излишки'] = total_surplus
-    result_df['покрыто'] = False
+    result_df['Отправлено'] = False
     result_df['остаток_потребности'] = result_df['Потребность'].copy()
     result_df['К перемещению'] = 0
 
@@ -125,7 +126,7 @@ def distribute_goods(sender_df, recipient_df):
         if need > 0:
             allocation = min(need, remaining_surplus)
             result_df.at[index, 'К перемещению'] = allocation
-            result_df.at[index, 'покрыто'] = allocation > 0
+            result_df.at[index, 'Отправлено'] = allocation > 0
             result_df.at[index, 'остаток_потребности'] = need - allocation
             remaining_surplus -= allocation
 
@@ -137,7 +138,8 @@ def distribute_goods(sender_df, recipient_df):
 def read_file(file_bytes: bytes, file_name: str):
     df = pd.read_excel(io.BytesIO(file_bytes), header=1, usecols=range(35))  # usecol=range(10) ограничить колонки
     print(df.head())
-    sender = input('Введите отправителя(пример: ДМД): ')
+    warehouses = df['Склад'].unique().tolist()
+    sender = input(f'Введите отправителя({', '.join(warehouses)}): ')
     werehouse_depth = int(input('Введите глубину склада в месяцах: '))
     unique_items = df.drop_duplicates(subset=['№ по каталогу'])[['Номенклатура Производитель', '№ по каталогу']]
     nomenclature_list = unique_items.rename(
@@ -148,18 +150,19 @@ def read_file(file_bytes: bytes, file_name: str):
     all_distributed_dfa = []
 
     for item in nomenclature_list:
-        sender_df = df[(df['Номенклатура Производитель'] == (item['brand'])) & (df['№ по каталогу'] == (item['nomenclature'])) &
-                       (df['Склад'] == item['sender'])].copy()
+        sender_df = df[
+            (df['Номенклатура Производитель'] == (item['brand'])) & (df['№ по каталогу'] == (item['nomenclature'])) &
+            (df['Склад'] == item['sender'])].copy()
 
-        recipient_df = df[(df['Номенклатура Производитель'] == (item['brand'])) & (df['№ по каталогу'] == (item['nomenclature'])) &
-                          (df['Склад'] != item['sender'])].copy()
+        recipient_df = df[
+            (df['Номенклатура Производитель'] == (item['brand'])) & (df['№ по каталогу'] == (item['nomenclature'])) &
+            (df['Склад'] != item['sender'])].copy()
         sender_df['Излишки'] = sender_df.apply(calculate_sales_sender, axis=1, args=(werehouse_depth,))
         recipient_df['Потребность'] = recipient_df.apply(calculate_sales_recipient, axis=1)
         recipient_df['Ранг'] = recipient_df.apply(goods_rank, axis=1)
-        # print(sender_df.head())
         print(recipient_df)
         distributed_df, remaining_surplus = distribute_goods(sender_df, recipient_df)
-        # print(distributed_df)
+
         all_distributed_dfa.append(distributed_df)
 
     fianl_df = pd.concat(all_distributed_dfa, ignore_index=True)
