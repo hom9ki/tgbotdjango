@@ -372,7 +372,7 @@ def download_prices_from_email():
     for mail in mails:
         # if mail['filename'] != control_len_name(mail['filename']):
         #     rename_file(mail)
-        fake_send_mail(subjects, recipient_email, mail)
+        send_mail(subjects, recipient_email, mail)
     print(f'Отчет отправлен. Писем сохранено: {len(mails)}')
 
     # clean_folder_content(save_dir)
