@@ -152,9 +152,14 @@ def body_to_text(filename, sender):
 def send_mail(subject, recipient, mail_data=None):
     msg = MIMEMultipart()
     msg['From'] = FROM_EMAIL
-    msg['To'] = recipient
     msg['Subject'] = subject
     msg.attach(MIMEText(body_to_text(mail_data['filename'], mail_data['sender']), 'plain', 'utf-8'))
+
+    if isinstance(recipient, str):
+        to_addr = recipient
+    else:
+        to_addr = ', '.join(recipient)
+    msg['To'] = to_addr
 
     if mail_data:
         filepath = mail_data['dir']
