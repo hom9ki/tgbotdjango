@@ -55,3 +55,17 @@ class AllowedEmail(models.Model):
 
     def __str__(self):
         return self.email
+
+
+class EmailRecipient(models.Model):
+    allowed_email = models.OneToOneField('AllowedEmail', on_delete=models.CASCADE, related_name='recipient',
+                                         verbose_name='Получатель')
+    is_active = models.BooleanField(default=False, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+
+    def __str__(self):
+        return self.allowed_email.email
+
+    class Meta:
+        verbose_name = 'Получатель письма'
+        verbose_name_plural = 'Получатели писем'

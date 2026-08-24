@@ -14,6 +14,28 @@ function setupEventListeners() {
     document.getElementById('loadGoodsmoveFormBtn')?.addEventListener('click', function() {
         loadForm('goodsmove');
     });
+    document.getElementById('loadPricesForMailBtn')?.addEventListener('click', function(e) {
+        console.log('Идем на почту');
+        e.preventDefault();
+        downloadMail();
+    });
+}
+
+async function downloadMail() {
+    showSuccess('Загрузка прайсов с почты...')
+    const response = await fetch('api/download/mail/', {
+        method: 'GET',
+        headers: {
+            "Accept": 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'},
+             credentials: 'same-origin'
+        });
+       const data = await response.json()
+       if (data.success) {
+           showSuccess('Файл успешно отправлены на почту')
+       } else {
+           showError('Ошибка отправки файла на почту')
+       }
 }
 
 function getCSRFToken() {
@@ -221,6 +243,8 @@ async function waitForTask(taskId) {
         await new Promise(resolve => setTimeout(resolve, 5000));
     }
 }
+
+
 
 // Вспомогательные функции
 function showSuccess(message) {

@@ -14,4 +14,5 @@ urlpatterns = [
 
     path('api/task/<str:task_id>/result/', views.api_get_task_result, name='api_get_task_result'),
 
+    path('api/download/mail/', views.api_download_mail, name='api_download_mail')
 ]

@@ -18,6 +18,7 @@ from .sevices import create_in_memory_uploaded_file
 from .task import process_single_file_task
 from celery.result import AsyncResult
 from .utils.logging import logger
+from .excel.download_prices import download_prices_from_email
 
 import base64
 
@@ -279,3 +280,17 @@ def api_download_file(request, file_id):
                  'download_url': download_url,
                  }
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def api_download_mail(request):
+    if request.method == 'GET':
+        print(f'Авторизован: {request.user.is_authenticated}')
+        if request.user.is_authenticated:
+            download_prices_from_email()
+            return Response({'success': True}, status=status.HTTP_200_OK)
+        else:
+            return Response({'success': False}, status=status.HTTP_403_FORBIDDEN)
+    return Response({'success': False}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, AllowedEmail
+from .models import CustomUser, AllowedEmail, EmailRecipient
 
 
 @admin.register(CustomUser)
@@ -17,3 +17,9 @@ class AllowedEmailAdmin(admin.ModelAdmin):
     list_display_links = ('email',)
     search_fields = ('email',)
     search_help_text = 'Поиск по email'
+
+@admin.register(EmailRecipient)
+class EmailRecipientAdmin(admin.ModelAdmin):
+    list_display = ('allowed_email', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('allowed_email__email', 'allowed_email__last_name')
