@@ -1,0 +1,9 @@
+<form method="post" class="upload-form" action="{% url 'upload_xlsx_file' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="bulk">
+    <div class="mb-3">
+        <label class="form-label">Файл (CSV / XLSX)</label>
+        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+    </div>
+    <button type="submit" class="btn btn-success" id="upload_button">Загрузить</button>
+</form>
