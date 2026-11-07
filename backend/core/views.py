@@ -22,6 +22,7 @@ from .task import process_single_file_task
 from celery.result import AsyncResult
 from .utils.logging import logger
 from .excel.download_prices import download_prices_from_email
+from .excel import importing_prod_list
 
 import base64
 
@@ -72,8 +73,9 @@ def upload_xlsx_file(request):
             logger.info(f'Файл загружен: {file}')
             xlsx_file = serializer.validated_data['file']
             try:
-                df = pd.read_excel(xlsx_file, skiprows=1)
-                logger.info(f'Загруженные данные: {df.head(10)}')
+                # df = pd.read_excel(xlsx_file, skiprows=1)
+                res = importing_prod_list.processing(xlsx_file)
+                logger.info(f'Загруженные данные: {res}')
             except Exception as e:
                 logger.error(f'Ошибка чтения файла: {e}')
                 return Response({'success': False, 'message': f'Ошибка чтения файла {e}'})
