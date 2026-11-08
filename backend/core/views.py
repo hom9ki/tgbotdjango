@@ -1,9 +1,6 @@
-import pandas as pd
-from django.shortcuts import render, reverse, get_object_or_404, redirect
-from pyexpat.errors import messages
-
-from .models import UploadedFile, Nomenclature
-from .serializers import UploadedFileSerializer, FileUploadSerializer, XLSXFileSerializer
+from django.shortcuts import render, reverse, get_object_or_404
+from .models import UploadedFile
+from .serializers import UploadedFileSerializer, FileUploadSerializer
 from rest_framework.decorators import api_view, parser_classes, authentication_classes, permission_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -36,52 +33,6 @@ def index(request):
         'username': user.username if user.is_authenticated else None,
     }
     return render(request, 'core/index.html', context)
-
-
-@login_required(login_url='/users/account/login/')
-def choice_processing_product(request):
-    user = request.user
-    if not user.is_authenticated:
-        return redirect('users:login')
-    return render(request, 'core/choice_processing_product.html')
-
-
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def upload_xlsx_file(request):
-    f_type = request.data['form_type']
-    logger.info(f'Форма загрузки: {f_type}')
-    data = request.data
-    logger.info(f'Данные: {data}')
-    if f_type == 'single':
-        product, created = Nomenclature.objects.get_or_create(manufacturer=data['brand'], catalog_number=data['number'],
-                                                              name=data['name'])
-
-        if created:
-            message = f'Товар {product} успешно создан'
-            logger.info(message)
-        else:
-            message = f'Товар {product} уже существует'
-            logger.info(message)
-        return Response({'success': True, 'message': message}, status=status.HTTP_200_OK)
-
-    elif f_type == 'bulk':
-        file = request.FILES['file']
-        serializer = XLSXFileSerializer(data=request.data)
-        if serializer.is_valid():
-            logger.info(f'Файл загружен: {file}')
-            xlsx_file = serializer.validated_data['file']
-            try:
-                df = pd.read_excel(xlsx_file, skiprows=1)
-                logger.info(f'Загруженные данные: {df.head(10)}')
-            except Exception as e:
-                logger.error(f'Ошибка чтения файла: {e}')
-                return Response({'success': False, 'message': f'Ошибка чтения файла {e}'})
-            return Response({'success': True, 'message': 'Данные успешно загружены'}, status=status.HTTP_200_OK)
-        else:
-            logger.error(f'Ошибка валидации: {serializer.errors}')
-
-    return Response({'success': False, 'message': 'Ошибка загрузки данных'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -182,9 +133,7 @@ def api_get_form(request, form_type):
     urls_types = {
         'multiplicity': 'Определение кратности',
         'price': 'Обработка прайс-листов',
-        'goodsmove': 'Оптимизация ежедневных перемещений товаров',
-        'multi_upload_products': 'Массовая загрузка номенклатуры',
-        'single_upload_products': 'Одиночная загрузка номенклатуры'
+        'goodsmove': 'Оптимизация ежедневных перемещений товаров'
     }
 
     upload_type = urls_types.get(form_type)
