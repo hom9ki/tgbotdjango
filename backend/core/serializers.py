@@ -2,7 +2,7 @@ import time
 
 from rest_framework import serializers
 import os
-from .models import UploadedFile, Nomenclature
+from .models import UploadedFile
 from users.serializers import CustomUserSerializer
 
 
@@ -50,6 +50,7 @@ class FileUploadSerializer(serializers.ModelSerializer):
             'title': {'required': False, 'allow_blank': True},
             'description': {'required': True, 'allow_blank': True}
         }
+
 
     def validate_file(self, value):
         max_size = 50 * 1024 * 1024
@@ -136,21 +137,3 @@ class MultiFileUploadSerializer(serializers.Serializer):
             uploaded_files.append(uploaded_file)
 
         return uploaded_files
-
-
-class NomenclatureSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Nomenclature
-        fields = ['manufacturer', 'catalog_number', 'name']
-
-
-class XLSXFileSerializer(serializers.Serializer):
-    file = serializers.FileField(write_only=True)
-
-    def validate_file(self, value):
-        if not value.name.lower().endswith('.xlsx'):
-            raise serializers.ValidationError('Ожидается файл с расширением .xlsx')
-        if value.size > 20 * 1024 * 1024:
-            raise serializers.ValidationError('Максимальный размер — 20 МБ')
-
-        return value

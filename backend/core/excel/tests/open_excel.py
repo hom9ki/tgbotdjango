@@ -1,17 +1,14 @@
 import unittest
 from pathlib import Path
-# from ..registry import get_processor
-# from ..pipeline import ProcessingPipeline
-# from ..goods_movement_report import GoodsMovementReport
-# from ..multiplicity_report import MultiplicityReport
-# from ..price_list_edit import PriceListEdit
-# from ..data_cleaning import open_file
-from backend.core.excel.universal_report import read_file
-# from .excel.universal_report import read_file
-from backend.core.excel.remove_merge import remove_merge
-# from .excel.remove_merge import remove_merge
+from ..registry import get_processor
+from ..pipeline import ProcessingPipeline
+from ..goods_movement_report import GoodsMovementReport
+from ..multiplicity_report import MultiplicityReport
+from ..price_list_edit import PriceListEdit
+from ..data_cleaning import open_file
+from ..universal_report import read_file
+from ..remove_merge import remove_merge
 import io
-
 
 class MyTestCase(unittest.TestCase):
     def test_something(self):
@@ -27,12 +24,13 @@ class MyTestCase(unittest.TestCase):
             # processor = ProcessingPipeline(processor_type)
             # result = processor.run(file_bytes, file.name)
             # result = GoodsMovementReport(file_bytes, file.name).get_stream
-            data = remove_merge(file_bytes, file.name)
+            data =remove_merge(file_bytes, file.name)
             result = read_file(data, file.name)
             file_bytes_io = io.BytesIO(result)
-            with open(CURRENT_DIR / f'{file.name}_результат.xlsx', 'wb') as f:
+            with open(CURRENT_DIR/f'{file.name}_результат.xlsx' , 'wb') as f:
                 f.write(file_bytes_io.read())
             print('Анализ закончен. Результаты сохранены в файл')
+
 
 
 if __name__ == '__main__':

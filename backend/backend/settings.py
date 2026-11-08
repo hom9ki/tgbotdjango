@@ -13,13 +13,8 @@ import os
 from pathlib import Path
 import environ
 
-ENV_FILE = os.getenv('DJANGO_ENV_FILE', '.env')
-environ.Env.read_env(ENV_FILE)
 env = environ.Env()
-
-
-DJANGO_ENV = os.getenv('DJANGO_ENV', 'production').lower()
-IS_LOCAL = DJANGO_ENV == 'local'
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,10 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = env.bool('DEBUG', True)
-DEBUG = IS_LOCAL
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '[::1]'] )
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:8000'])
+DEBUG = env.bool('DEBUG', False)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # Application definition
@@ -164,20 +158,3 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Europe/Moscow'
-
-# SMTP_SERVER = "smtp.mail.ru"
-# SMTP_PORT = 465
-# SMTP_LOGIN = '79137676668@mail.ru'          # Обычно тот же логин
-# SMTP_PASSWORD = 'vBxhBw548YCNtYOeq2vk'    # Можно использовать тот же спец-пароль
-# FROM_EMAIL = 'hom9ki83@mail.ru'   # Или SMTP_LOGIN
-
-SMTP_SERVER = env('SMTP_SERVER')
-SMTP_PORT = env.int('SMTP_PORT')
-SMTP_LOGIN = env('SMTP_LOGIN')
-SMTP_PASSWORD = env('SMTP_PASSWORD')
-
-MAIL_LOGIN = env('MAIL_LOGIN')
-MAIL_PASSWORD = env('MAIL_PASSWORD')
-
-
-RECIPIENT_EMAIL = 'av.koryagin@favorit-parts.ru'
