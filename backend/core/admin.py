@@ -45,12 +45,11 @@ class MinStockAdmin(admin.ModelAdmin):
 
 @admin.register(Completeness)
 class CompletenessAdmin(admin.ModelAdmin):
-    list_display = ('count', 'active', 'nomenclatures_count')
-    fields = ('nomenclatures', 'count', 'active')
-    list_filter = ('count', 'active')
-    search_fields = ('nomenclatures__manufacturer', 'nomenclatures__catalog_number')
+    list_display = ('nomenclature', 'quantity', 'active')
+    fields = ('nomenclature', 'quantity', 'active')
+    list_filter = ('quantity', 'active')
+    autocomplete_fields = ('nomenclature',)
 
-    def nomenclatures_count(self, obj):
-        return obj.nomenclatures.count()
 
-    nomenclatures_count.short_description = 'Количество позиций'
+
+

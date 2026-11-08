@@ -11,13 +11,16 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
 from pathlib import Path
+
 import environ
 
-env = environ.Env()
-environ.Env.read_env()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / '.env.dev')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -158,3 +161,13 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Europe/Moscow'
+
+SMTP_SERVER = env('SMTP_SERVER')
+SMTP_PORT = env.int('SMTP_PORT')
+SMTP_LOGIN = env('SMTP_LOGIN')
+SMTP_PASSWORD = env('SMTP_PASSWORD')
+
+MAIL_LOGIN = env('MAIL_LOGIN')
+MAIL_PASSWORD = env('MAIL_PASSWORD')
+
+RECIPIENT_EMAIL = 'av.koryagin@favorit-parts.ru'
