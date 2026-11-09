@@ -126,15 +126,17 @@ class MinStock(models.Model):
 
 
 class Completeness(models.Model):
-    nomenclatures = models.ManyToManyField('Nomenclature', related_name='completeness', verbose_name='Номенклатура')
-    count = models.PositiveIntegerField(default=1, verbose_name='Количество')
-    active = models.BooleanField(default=False, verbose_name='Заблокировано(не измениться автоматически)')
+    nomenclature = models.ForeignKey('Nomenclature', on_delete=models.CASCADE, related_name='completeness_list', verbose_name='Номенклатура')
+    quantity = models.PositiveIntegerField(verbose_name='Кратность')
+    active = models.BooleanField(default=False, verbose_name='Заблокировано')
     last_updated = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
 
     class Meta:
+        unique_together = ['nomenclature', 'quantity']
         verbose_name = 'Комплектность'
         verbose_name_plural = 'Комплектность'
+        ordering = ['nomenclature', 'quantity']
 
     def __str__(self):
-        return f'Комплектность {self.count} шт. ({self.nomenclatures.count()} позиций)'
+        return f'{self.nomenclature} - кратность: {self.quantity}'
 
