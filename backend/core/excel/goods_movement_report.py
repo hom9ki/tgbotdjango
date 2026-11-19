@@ -4,8 +4,10 @@ from io import BytesIO
 import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from .settings import UNNECESSARY_BRANDS
+# from .settings import UNNECESSARY_BRANDS
 from .base_processing_files import BaseProcessingFiles
+from ..models import Completeness, UnnecessaryBrands
+from ..utils.logging import logger
 
 
 class GoodsMovementReport(BaseProcessingFiles):
@@ -28,11 +30,27 @@ class GoodsMovementReport(BaseProcessingFiles):
             self._processed_data = self.process()
         return self._processed_data
 
-    def unnecessary_brand_del(self, row: dict) -> None:
+    def unnecessary_brand_del(self, row: dict, unnecessary_brands: list[UnnecessaryBrands]) -> None:
+        """Удаление брендов из списка"""
         brand = row.get('Производитель', '').lower()
-        if brand in UNNECESSARY_BRANDS:
+        unnecessary_brands = [brand.brand.lower() for brand in unnecessary_brands]
+        # if brand in UNNECESSARY_BRANDS:
+        if brand in unnecessary_brands:
             print(f'Бренд {brand} не нужен')
             row['К перемещению К'] = ''
+
+    def warehouse_clean(self, row: dict, warehouse='СПБ2 Хранение'):
+        processing_warehouse = row.get('Склад', '')
+        matrix_proof = row.get('Признак матрицы', '')
+        sender = row.get('ABC Отпр', '')
+        buyer = row.get('Покупателей', '')
+        views = row.get('Пробои', '')
+        if processing_warehouse == warehouse and matrix_proof == 'Продажи сопр филиалов':
+            if not buyer and not views and sender not in ['A', 'B']:
+                print(f'Склад {processing_warehouse} не нужен. '
+                      f'Параметры: {matrix_proof}, {sender}, {buyer}, '
+                      f'{views}')
+                row['К перемещению К'] = ''
 
     def openpyxl_open_file(self, stream: io.BytesIO):
         """Открытие файла с помощью openpyxl для сохранения в тот же файл"""
@@ -67,13 +85,25 @@ class GoodsMovementReport(BaseProcessingFiles):
 
     def multiplicity_check(self, row: dict) -> None:
         """Проверка кратности"""
+        print('Проверка кратности')
         amout = row.get('К перемещению К', 0)
         mult = row.get('Кратность продажи', 1)
+        try:
+            bd_mult = Completeness.objects.get(nomenclature__manufacturer=row['Производитель'],
+                                               nomenclature__catalog_number=row['Номер по каталогу'])
+            bd_mult_quantity = bd_mult.quantity
+            print(bd_mult)
+        except Completeness.DoesNotExist:
+            bd_mult_quantity = 1
+        if bd_mult_quantity != mult:
+            print(f'БД кратность {bd_mult_quantity}, обычная кратность {mult}')
+            mult = bd_mult_quantity
 
         if mult != 1 and amout:
             remainder = amout % mult
             if remainder != 0 and amout > mult:
                 print(f'Остаток не кратен кратности, остаток {remainder}')
+
                 row['К перемещению К'] = amout - remainder
             elif remainder != 0 and amout < mult:
                 row['К перемещению К'] = mult
@@ -85,22 +115,24 @@ class GoodsMovementReport(BaseProcessingFiles):
         available_balance = row.get('Дост Ост Отпр', 1)
 
         if stock < mult or available_balance < mult:
-            print(f'Остаток меньше кратности')
+            print(f'Остаток меньше кратности, кратность {mult}')
             row['К перемещению К'] = ''
 
         elif stock < mult * 2:
-            print(f'Остаток меньше кратности * 2')
+            print(f'Остаток меньше кратности * 2, остаток {stock}')
             row['К перемещению К'] = ''
 
     def validate_inventory(self, rows: list) -> dict:
         """Проверка данных отчёта"""
         update_rows = {}
+        unnecessary_brands = UnnecessaryBrands.objects.filter(active=True)
         for i, row in enumerate(rows, start=2):
             if row['Кол-во к перем.'] != '':
                 self.adding_the_amount_of_movement(row)
                 self.multiplicity_check(row)
                 self.stock_check(row)
-                self.unnecessary_brand_del(row)
+                self.unnecessary_brand_del(row, unnecessary_brands)
+                self.warehouse_clean(row)
             update_rows[i] = row['К перемещению К']
 
         return update_rows

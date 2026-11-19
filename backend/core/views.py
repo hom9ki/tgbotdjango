@@ -22,7 +22,7 @@ from .task import process_single_file_task
 from celery.result import AsyncResult
 from .utils.logging import logger
 from .excel.download_prices import download_prices_from_email
-from .excel import importing_prod_list
+from .excel import importing_prod_list, download_multiplicity, upload_multiplicity
 
 import base64
 
@@ -45,6 +45,43 @@ def choice_processing_product(request):
     if not user.is_authenticated:
         return redirect('users:login')
     return render(request, 'core/choice_processing_product.html')
+
+
+@login_required(login_url='/users/account/login/')
+def multiplicity_handling(request):
+    user = request.user
+    if not user.is_authenticated:
+        return redirect('users:login')
+    return render(request, 'core/multiplicity_handling.html')
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def multiplicity_processing(request):
+    processing_type = request.data['processing_type']
+    logger.info(f'Тип обработки: {processing_type}')
+    if processing_type == 'download':
+        file_bytes = download_multiplicity.get_multiplicity()
+        if file_bytes:
+            logger.info(f'Файл успешно сформирован')
+            result = {'success': True,
+                      'file_bytes': file_bytes}
+            return Response(result, status=status.HTTP_200_OK)
+        logger.warning(f'Файл не сформирован.')
+        result = {'success': False}
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+    if processing_type == 'upload':
+        file = request.FILES['file']
+        logger.info(f'Файл загружен: {file}')
+        serializer = XLSXFileSerializer(data=request.data)
+        if serializer.is_valid():
+            file = serializer.validated_data['file']
+            result = upload_multiplicity.set_multiplicity(file)
+            logger.info(f'Файл успешно обработан {result}')
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if processing_type == 'handing':
+        pass
 
 
 @api_view(['POST'])
@@ -75,7 +112,7 @@ def upload_xlsx_file(request):
             try:
                 # df = pd.read_excel(xlsx_file, skiprows=1)
                 res = importing_prod_list.processing(xlsx_file)
-                logger.info(f'Загруженные данные: {res}')
+                logger.info(f'Загруженные данные: {res['total']}')
             except Exception as e:
                 logger.error(f'Ошибка чтения файла: {e}')
                 return Response({'success': False, 'message': f'Ошибка чтения файла {e}'})

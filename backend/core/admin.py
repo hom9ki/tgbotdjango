@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import UploadedFile
+from .models import UploadedFile, Nomenclature, Warehouse, MinStock, Completeness, UnnecessaryBrands
+from django.template.defaultfilters import truncatechars
 
 
 @admin.register(UploadedFile)
@@ -8,6 +9,56 @@ class UploadedFileAdmin(admin.ModelAdmin):
     list_filter = ('uploaded_by', 'title', 'doc_type')
     readonly_fields = ('uploaded_by', 'created_at')
 
-
     class Meta:
         model = UploadedFile
+
+
+@admin.register(Nomenclature)
+class NomenclatureAdmin(admin.ModelAdmin):
+    list_display = ('manufacturer', 'catalog_number', 'name')
+    search_fields = ('manufacturer', 'catalog_number', 'name')
+    search_help_text = 'Поиск по брендам, номеру по каталогу и наименованию...'
+    show_full_result_count = True
+    list_filter = ('manufacturer',)
+    date_hierarchy = 'updated_at'
+    list_per_page = 50
+    fields = ('manufacturer', 'catalog_number', 'name')
+
+    def short_name(self, obj):
+        return truncatechars(obj.name, 20)
+
+    short_name.short_description = 'Наименование'
+
+
+@admin.register(Warehouse)
+class WarehouseAdmin(admin.ModelAdmin):
+    list_display = ('name', 'short_name', 'code', 'active')
+    fields = ('name', 'short_name', 'code', 'active')
+    search_fields = ('name', 'code', 'short_name')
+    list_filter = ('active',)
+
+
+@admin.register(MinStock)
+class MinStockAdmin(admin.ModelAdmin):
+    list_display = ('nomenclature__manufacturer', 'nomenclature__catalog_number', 'warehouse', 'active', 'min_quantity',
+                    'last_updated')
+    fields = ('nomenclature', 'warehouse', 'active', 'min_quantity')
+    search_fields = ('nomenclature__manufacturer', 'nomenclature__catalog_number')
+    list_filter = ('warehouse', 'active')
+    date_hierarchy = 'last_updated'
+    list_per_page = 50
+
+
+@admin.register(Completeness)
+class CompletenessAdmin(admin.ModelAdmin):
+    list_display = ('nomenclature', 'quantity', 'active')
+    fields = ('nomenclature', 'quantity', 'active')
+    list_filter = ('quantity', 'active')
+    autocomplete_fields = ('nomenclature',)
+
+
+@admin.register(UnnecessaryBrands)
+class UnnecessaryBrandsAdmin(admin.ModelAdmin):
+    list_display = ('brand','active')
+    list_filter = ('active',)
+    search_fields = ('brand', 'active')

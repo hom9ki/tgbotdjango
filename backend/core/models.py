@@ -2,6 +2,7 @@ from django.db import models
 import os
 
 from django.contrib.auth import get_user_model
+from django.template.defaultfilters import truncatechars
 
 User = get_user_model()
 
@@ -75,3 +76,89 @@ class UploadedFile(models.Model):
             return os.path.splitext(self.file.name)[1]
         else:
             return ''
+
+
+class Nomenclature(models.Model):
+    manufacturer = models.CharField(max_length=50, blank=False, verbose_name='Производитель')
+    catalog_number = models.CharField(max_length=100, blank=False, verbose_name='Номер по каталогу')
+    name = models.CharField(max_length=300, blank=False, verbose_name='Наименование')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['manufacturer', 'catalog_number']
+        verbose_name = 'Номенклатура'
+        verbose_name_plural = 'Номенклатура'
+        ordering = ['manufacturer', 'catalog_number']
+
+    def __str__(self):
+        return f'{self.manufacturer} {self.catalog_number} - {self.name}'
+
+
+class Warehouse(models.Model):
+    name = models.CharField(max_length=100, verbose_name='Название склада')
+    short_name = models.CharField(max_length=10, default='', verbose_name='Короткое название')
+    code = models.CharField(max_length=10, unique=True, verbose_name='Код склада')
+    active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Склад'
+        verbose_name_plural = 'Склады'
+
+    def __str__(self):
+        return f'{self.name}: {self.code}'
+
+
+class MinStock(models.Model):
+    nomenclature = models.ForeignKey('Nomenclature', on_delete=models.CASCADE, related_name='min_stocks')
+    warehouse = models.ForeignKey('Warehouse', on_delete=models.CASCADE, related_name='min_stocks')
+    min_quantity = models.PositiveIntegerField(default=0, verbose_name='Минимальный остаток')
+    active = models.BooleanField(default=False, verbose_name='В матрице')
+    last_updated = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        unique_together = ['nomenclature', 'warehouse']
+        verbose_name = 'Минимальный остаток'
+        verbose_name_plural = 'Минимальные остатки'
+        indexes = [models.Index(fields=['warehouse', 'min_quantity'])]
+
+    def __str__(self):
+        return f'{self.nomenclature} -> {self.warehouse}: min={self.min_quantity}'
+
+
+class Completeness(models.Model):
+    nomenclature = models.OneToOneField('Nomenclature', on_delete=models.CASCADE, related_name='completeness',
+                                        verbose_name='Номенклатура')
+    quantity = models.PositiveIntegerField(verbose_name='Кратность')
+    active = models.BooleanField(default=False, verbose_name='Заблокировано')
+    last_updated = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        verbose_name = 'Комплектность'
+        verbose_name_plural = 'Комплектность'
+        ordering = ['nomenclature', 'quantity']
+
+    @property
+    def active_update(self):
+        if self.active:
+            return False
+        return True
+
+    def __str__(self):
+        text = f'{self.nomenclature} - кратность: {self.quantity}'
+        return truncatechars(text, 20)
+
+
+class UnnecessaryBrands(models.Model):
+    brand = models.CharField(max_length=255, verbose_name='Бренд')
+    active = models.BooleanField(default=False, verbose_name='Не используется')
+    created = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+
+    class Meta:
+        verbose_name = 'Неиспользуемый бренд'
+        verbose_name_plural = 'Неиспользуемые бренды'
+        ordering = ['brand']
+
+    def __str__(self):
+        return f'{self.brand} - {self.active}'

@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 # from ..registry import get_processor
 # from ..pipeline import ProcessingPipeline
-# from ..goods_movement_report import GoodsMovementReport
+# from backend.core.excel.goods_movement_report import GoodsMovementReport
 # from ..multiplicity_report import MultiplicityReport
 # from ..price_list_edit import PriceListEdit
 # from ..data_cleaning import open_file
