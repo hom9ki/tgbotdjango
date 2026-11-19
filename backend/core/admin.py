@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import UploadedFile, Nomenclature, Warehouse, MinStock, Completeness
+from .models import UploadedFile, Nomenclature, Warehouse, MinStock, Completeness, UnnecessaryBrands
+from django.template.defaultfilters import truncatechars
 
 
 @admin.register(UploadedFile)
@@ -14,7 +15,7 @@ class UploadedFileAdmin(admin.ModelAdmin):
 
 @admin.register(Nomenclature)
 class NomenclatureAdmin(admin.ModelAdmin):
-    list_display = ('manufacturer', 'catalog_number')
+    list_display = ('manufacturer', 'catalog_number', 'name')
     search_fields = ('manufacturer', 'catalog_number', 'name')
     search_help_text = 'Поиск по брендам, номеру по каталогу и наименованию...'
     show_full_result_count = True
@@ -22,6 +23,11 @@ class NomenclatureAdmin(admin.ModelAdmin):
     date_hierarchy = 'updated_at'
     list_per_page = 50
     fields = ('manufacturer', 'catalog_number', 'name')
+
+    def short_name(self, obj):
+        return truncatechars(obj.name, 20)
+
+    short_name.short_description = 'Наименование'
 
 
 @admin.register(Warehouse)
@@ -51,5 +57,8 @@ class CompletenessAdmin(admin.ModelAdmin):
     autocomplete_fields = ('nomenclature',)
 
 
-
-
+@admin.register(UnnecessaryBrands)
+class UnnecessaryBrandsAdmin(admin.ModelAdmin):
+    list_display = ('brand','active')
+    list_filter = ('active',)
+    search_fields = ('brand', 'active')

@@ -34,9 +34,6 @@
                         <button class="btn btn-success" id="loadPriceFormBtn">
                             <i class="bi bi-files me-2"></i>Работа с Прайс-листами
                         </button>
-                        <!--                        <a class="btn btn-info" href="{% url 'api_download_mail' %}"  >-->
-                        <!--                            <i class="bi bi-files me-2"></i>Скачать Прайс-листы-->
-                        <!--                        </a>-->
                         <button class="btn btn-info" id="loadPricesForMailBtn">
                             <i class="bi bi-files me-2"></i>Скачать Прайс-листы-->
                         </button>
@@ -48,6 +45,10 @@
                         </a>
                         <a class="btn btn-outline-danger" id="openSearchFormBtn" href="{% url 'archive' %}">
                             <i class="bi bi-trash me-2"></i>Поиск файла в архиве
+                        </a>
+                        <a class="btn btn-outline-dark" id="MultiplicityProcessingBtn"
+                           href="{% url 'multiplicity_handling' %}">
+                            <i class="bi bi-trash me-2"></i>Обработка кратности
                         </a>
                     </div>
                 </div>

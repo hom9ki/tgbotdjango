@@ -2,6 +2,7 @@ from django.db import models
 import os
 
 from django.contrib.auth import get_user_model
+from django.template.defaultfilters import truncatechars
 
 User = get_user_model()
 
@@ -88,6 +89,7 @@ class Nomenclature(models.Model):
         unique_together = ['manufacturer', 'catalog_number']
         verbose_name = 'Номенклатура'
         verbose_name_plural = 'Номенклатура'
+        ordering = ['manufacturer', 'catalog_number']
 
     def __str__(self):
         return f'{self.manufacturer} {self.catalog_number} - {self.name}'
@@ -126,17 +128,37 @@ class MinStock(models.Model):
 
 
 class Completeness(models.Model):
-    nomenclature = models.ForeignKey('Nomenclature', on_delete=models.CASCADE, related_name='completeness_list', verbose_name='Номенклатура')
+    nomenclature = models.OneToOneField('Nomenclature', on_delete=models.CASCADE, related_name='completeness',
+                                        verbose_name='Номенклатура')
     quantity = models.PositiveIntegerField(verbose_name='Кратность')
     active = models.BooleanField(default=False, verbose_name='Заблокировано')
     last_updated = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
 
     class Meta:
-        unique_together = ['nomenclature', 'quantity']
         verbose_name = 'Комплектность'
         verbose_name_plural = 'Комплектность'
         ordering = ['nomenclature', 'quantity']
 
-    def __str__(self):
-        return f'{self.nomenclature} - кратность: {self.quantity}'
+    @property
+    def active_update(self):
+        if self.active:
+            return False
+        return True
 
+    def __str__(self):
+        text = f'{self.nomenclature} - кратность: {self.quantity}'
+        return truncatechars(text, 20)
+
+
+class UnnecessaryBrands(models.Model):
+    brand = models.CharField(max_length=255, verbose_name='Бренд')
+    active = models.BooleanField(default=False, verbose_name='Не используется')
+    created = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+
+    class Meta:
+        verbose_name = 'Неиспользуемый бренд'
+        verbose_name_plural = 'Неиспользуемые бренды'
+        ordering = ['brand']
+
+    def __str__(self):
+        return f'{self.brand} - {self.active}'
