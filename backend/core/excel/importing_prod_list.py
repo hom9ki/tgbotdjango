@@ -119,6 +119,9 @@ def save_multiplicity(objects: list):
     to_update = []
     for nom_id, qty in target.items():
         c = exists.get(nom_id)
+        if c is None:
+            logger.error(f'Не найдена кратность для {nom_id}')
+            continue
         if qty == 1:
             continue
         if not c.active_update:

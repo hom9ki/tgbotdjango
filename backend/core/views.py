@@ -110,7 +110,6 @@ def upload_xlsx_file(request):
             logger.info(f'Файл загружен: {file}')
             xlsx_file = serializer.validated_data['file']
             try:
-                # df = pd.read_excel(xlsx_file, skiprows=1)
                 res = importing_prod_list.processing(xlsx_file)
                 logger.info(f'Загруженные данные: {res['total']}')
             except Exception as e:
