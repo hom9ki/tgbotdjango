@@ -40,6 +40,7 @@ class GoodsMovementReport(BaseProcessingFiles):
             row['К перемещению К'] = ''
 
     def warehouse_clean(self, row: dict, warehouse='СПБ2 Хранение'):
+        """Очистка склада СПБ2 Хранение"""
         processing_warehouse = row.get('Склад', '')
         matrix_proof = row.get('Признак матрицы', '')
         sender = row.get('ABC Отпр', '')
@@ -50,6 +51,14 @@ class GoodsMovementReport(BaseProcessingFiles):
                 print(f'Склад {processing_warehouse} не нужен. '
                       f'Параметры: {matrix_proof}, {sender}, {buyer}, '
                       f'{views}')
+                row['К перемещению К'] = ''
+
+    def control_weight(self, row: dict):
+        weight = row.get('Вес', 0)
+        count = row.get('Кол-во к перем.', 0)
+        if not isinstance(weight, str):
+            if weight / count > 50:
+                print(f'Вес {weight} больше 50 кг!!!')
                 row['К перемещению К'] = ''
 
     def openpyxl_open_file(self, stream: io.BytesIO):
@@ -133,6 +142,7 @@ class GoodsMovementReport(BaseProcessingFiles):
                 self.stock_check(row)
                 self.unnecessary_brand_del(row, unnecessary_brands)
                 self.warehouse_clean(row)
+                self.control_weight(row)
             update_rows[i] = row['К перемещению К']
 
         return update_rows
